@@ -1,0 +1,141 @@
+/* The start screen: a single quiet column. */
+
+.setup {
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding: max(40px, env(safe-area-inset-top)) 16px
+    max(48px, env(safe-area-inset-bottom));
+}
+
+.setup-intro {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin-bottom: 36px;
+  text-align: center;
+  color: var(--gold);
+}
+.setup-intro .logo-mark {
+  margin-bottom: 6px;
+  animation: settle 900ms var(--ease) both;
+}
+.setup-title {
+  margin: 0;
+  line-height: 1.2;
+}
+.setup-title-ar {
+  font-family: var(--font-brand);
+  font-weight: 600;
+  font-size: clamp(40px, 9vw, 54px);
+  color: var(--gold);
+}
+.setup-tagline {
+  margin: 0;
+  color: var(--muted);
+  font-size: 17px;
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: rotate(-60deg) scale(0.9);
+  }
+}
+
+.setup-form {
+  display: grid;
+  gap: 28px;
+}
+.setup-form > .button-primary {
+  margin-top: 4px;
+}
+
+.start-picker,
+.halaqa-form {
+  display: grid;
+  gap: 28px;
+}
+.start-picker {
+  gap: 12px;
+}
+.start-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.start-summary-page {
+  color: var(--gold);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stepper-input {
+  width: 96px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+}
+.stepper-of {
+  color: var(--muted);
+  font-size: 14px;
+}
+.stepper .stepper-button:last-child {
+  margin-inline-start: auto;
+}
+
+.reader-names {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: -16px;
+}
+.reader-names .field-note {
+  grid-column: 1 / -1;
+}
+
+/* Carry on where you left off. */
+.resume {
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid var(--gold-line);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  box-shadow: 0 18px 50px rgb(0 0 0 / 0.25);
+  text-align: center;
+  animation: rise 420ms var(--ease) both;
+}
+.resume-title {
+  margin: 0;
+  color: var(--gold);
+  font-size: 15px;
+  font-weight: 600;
+}
+.resume-summary {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 6px;
+}
+.resume-page {
+  font-size: 22px;
+  font-weight: 600;
+}
+.resume-reader {
+  color: var(--muted);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}

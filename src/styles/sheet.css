@@ -1,0 +1,157 @@
+/* The slide-in panel: from the left edge on a wide screen (the end side in a
+   right-to-left page, away from where reading starts), from the bottom on a
+   phone, where a thumb can reach it. */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgb(0 0 0 / 0.5);
+  backdrop-filter: blur(2px);
+  transition: opacity 260ms var(--ease);
+}
+.sheet-backdrop[data-starting-style],
+.sheet-backdrop[data-ending-style] {
+  opacity: 0;
+}
+
+.sheet {
+  position: fixed;
+  z-index: 50;
+  inset-block: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(440px, 100vw);
+  background: var(--surface);
+  color: var(--fg);
+  border-inline-start: 1px solid var(--line);
+  box-shadow: 24px 0 60px rgb(0 0 0 / 0.35);
+  transition: transform 300ms var(--ease);
+  outline: none;
+}
+.sheet[data-starting-style],
+.sheet[data-ending-style] {
+  transform: translateX(-100%);
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  padding-top: max(14px, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--line);
+}
+.sheet-title {
+  flex: 1;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  outline: none;
+}
+.sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  align-content: start;
+  gap: 24px;
+  padding: 20px 20px max(28px, env(safe-area-inset-bottom));
+}
+
+.settings-section {
+  display: grid;
+  gap: 18px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.settings-heading {
+  margin: 0;
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.settings-section .halaqa-form,
+.settings-section .start-picker {
+  gap: 22px;
+}
+.settings-about p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.shortcuts {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.shortcuts div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.shortcuts dt {
+  min-width: 56px;
+}
+.shortcuts dd {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.4);
+}
+.swatch[data-swatch='burgundy'] {
+  background: #6b1f2c;
+}
+.swatch[data-swatch='green'] {
+  background: #1d5a43;
+}
+.swatch[data-swatch='blue'] {
+  background: #233f73;
+}
+
+.sheet-halaqa {
+  display: grid;
+  gap: 24px;
+}
+
+@media (max-width: 759px) {
+  .sheet {
+    inset-block: auto 0;
+    inset-inline: 0;
+    width: 100%;
+    max-height: 90dvh;
+    border-inline-start: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -20px 60px rgb(0 0 0 / 0.4);
+  }
+  .sheet::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 40px;
+    height: 4px;
+    margin-left: -20px;
+    border-radius: 999px;
+    background: var(--line);
+  }
+  .sheet[data-starting-style],
+  .sheet[data-ending-style] {
+    transform: translateY(100%);
+  }
+  .sheet-header {
+    padding-top: 22px;
+  }
+}

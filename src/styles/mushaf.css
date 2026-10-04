@@ -1,0 +1,247 @@
+/* The Mushaf page: ivory paper, a hairline gold frame, fifteen lines.
+
+   Every size inside the page is in `cqi`, a share of the page's own width,
+   so the page is the same page at 320px and at 900px, only larger. The page
+   is therefore a fixed shape, `--page-height` times its width (declared in
+   tokens.css, since the layout around the page needs it too), and the layout
+   fits it to the room it has by width alone (see reading.css). Keep
+   `--page-height` in step with the parts below if any of them changes:
+
+     3.2       above the running head        3.2
+     7.2       running head                  7.2
+     2 × 2.2   frame padding                 4.4
+     0.7       the frame's double rule       0.7
+     15 × 9.6  lines                       144.0
+     7.0       folio, and 3.2 under it      10.2
+                                           ─────
+                                           169.7  */
+
+.mushaf-page {
+  container-type: inline-size;
+  position: relative;
+  width: 100%;
+  margin-inline: auto;
+  color: var(--ink);
+  background:
+    radial-gradient(
+      ellipse 120% 90% at 50% 45%,
+      transparent 60%,
+      rgb(170 130 60 / 0.1)
+    ),
+    var(--paper);
+  border-radius: 6px;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.6) inset,
+    0 2px 6px rgb(0 0 0 / 0.18),
+    0 22px 60px rgb(0 0 0 / 0.38);
+  transition: width 420ms var(--ease);
+}
+/* The inner sheet carries the padding, in cqi, because the page itself is
+   the container its own padding cannot be measured against. */
+.mushaf-page > * {
+  margin-inline: 5.5cqi;
+}
+
+.mushaf-running-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 7.2cqi;
+  margin-top: 3.2cqi;
+  padding-inline: 1cqi;
+  color: var(--ink-soft);
+  font-family: var(--font-naskh);
+  font-size: 3.5cqi;
+  font-weight: 700;
+  line-height: 1;
+}
+.mushaf-rub {
+  font-weight: 400;
+}
+.mushaf-sajdah {
+  color: var(--frame);
+  font-size: 3.2cqi;
+}
+
+.mushaf-frame {
+  padding: 2.2cqi 0;
+  border-block: 0.35cqi double var(--frame-soft);
+}
+
+.mushaf-lines {
+  display: grid;
+  grid-template-rows: repeat(15, 9.6cqi);
+  font-size: 5.52cqi;
+  line-height: 1;
+  direction: rtl;
+}
+
+.mushaf-line {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/* The printed Mushaf justifies every line to the full measure; the glyphs
+   are drawn so a line's words nearly fill it, and the space between them
+   takes up the rest. */
+.mushaf-words {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  white-space: nowrap;
+}
+.mushaf-words > span {
+  display: inline-block;
+}
+
+/* In glyph mode the readable text is for screen readers only. When the
+   page font could not load it is the page itself, set in a Quran font on
+   the same fifteen lines. */
+[data-font='glyphs'] .mushaf-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+[data-font='text'] .mushaf-words {
+  display: none;
+}
+[data-font='text'] .mushaf-text {
+  width: 100%;
+  font-family: var(--font-quran);
+  font-size: 0.74em;
+  line-height: 1.2;
+  text-align: justify;
+  text-align-last: justify;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* The opening two pages: eight lines, set narrower and centred in the
+   middle of the page, as the print sets al-Fatihah and the start of
+   al-Baqarah. */
+.mushaf-page[data-opening] .mushaf-lines {
+  grid-template-rows: repeat(8, 9.6cqi);
+  align-content: center;
+  height: 144cqi;
+}
+.mushaf-page[data-opening] .mushaf-line {
+  justify-content: center;
+}
+.mushaf-page[data-opening] .mushaf-words {
+  justify-content: center;
+  gap: 0.28em;
+  width: auto;
+}
+
+/* ---------- Surah header and basmala ---------- */
+
+.surah-header {
+  justify-content: center;
+  gap: 2.5cqi;
+  margin-block: 1cqi;
+  border: 0.3cqi solid var(--frame);
+  border-radius: 999px;
+  background:
+    linear-gradient(var(--paper), var(--paper)) padding-box,
+    var(--paper-shade);
+  box-shadow:
+    inset 0 0 0 0.8cqi var(--paper),
+    inset 0 0 0 1cqi var(--frame-soft);
+}
+.surah-name {
+  margin: 0;
+  font-family: var(--font-naskh);
+  font-size: 4.6cqi;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+}
+.surah-ornament {
+  width: 3cqi;
+  height: 3cqi;
+  fill: none;
+  stroke: var(--frame);
+  stroke-width: 1.6;
+}
+
+.basmala {
+  justify-content: center;
+}
+.basmala-glyphs {
+  font-size: 1em;
+  word-spacing: 0.1em;
+}
+.basmala-text {
+  font-family: var(--font-quran);
+  font-size: 0.8em;
+}
+
+/* ---------- Folio ---------- */
+
+.mushaf-folio {
+  display: grid;
+  place-items: center;
+  height: 7cqi;
+  margin-bottom: 3.2cqi;
+}
+.mushaf-folio span {
+  display: grid;
+  place-items: center;
+  min-width: 7cqi;
+  height: 5cqi;
+  padding-inline: 1.4cqi;
+  border: 0.25cqi solid var(--frame-soft);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  font-family: var(--font-naskh);
+  font-size: 3.2cqi;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ---------- Loading ---------- */
+
+.mushaf-skeleton .mushaf-line {
+  justify-content: center;
+}
+.skeleton-bar {
+  width: 100%;
+  height: 28%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--paper-shade) 0%,
+    color-mix(in srgb, var(--paper-shade) 40%, var(--paper)) 50%,
+    var(--paper-shade) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  opacity: 0.7;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* A new page settles in rather than snapping, the way a page is turned. */
+.mushaf-lines[data-font] {
+  animation: page-in 360ms var(--ease) both;
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (forced-colors: active) {
+  .mushaf-page {
+    border: 1px solid CanvasText;
+  }
+}

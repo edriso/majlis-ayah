@@ -1,0 +1,80 @@
+/* Colour, type and rhythm. Three themes, each a mosque carpet at night:
+   burgundy, green and blue grounds under the same warm gold and the same
+   ivory page. Only the ground changes between them, so every pairing below
+   that involves gold or the page holds in all three.
+
+   Contrast, measured as WCAG ratios, worst case across the three themes
+   (src/styles/contrast.test.ts recomputes them and fails under the minimum):
+
+     --fg on --bg, --surface                    12.0     needs 4.5
+     --muted on --bg, --surface, --raised        7.0     needs 4.5
+     --gold on --bg, --surface, --raised         6.2     needs 4.5
+     --on-gold on --gold                         8.3     needs 4.5
+     --control-border on --bg, --surface         3.4     needs 3 (1.4.11)
+     --ink on --paper                           16.6     needs 4.5
+     --ink-soft on --paper                       7.6     needs 4.5
+
+   Secondary text is a colour of its own, never `opacity`: opacity multiplies
+   against whatever is behind it and quietly drops below AA. */
+
+:root {
+  --font-ui:
+    'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-brand: 'Reem Kufi', 'IBM Plex Sans Arabic', sans-serif;
+  --font-naskh: 'Amiri', 'Times New Roman', serif;
+  --font-quran: 'Amiri Quran', 'Amiri', serif;
+
+  --gold: #d9b469;
+  --gold-strong: #ecca84;
+  --on-gold: #2b1d07;
+  --gold-soft: rgb(217 180 105 / 0.14);
+  --gold-line: rgb(217 180 105 / 0.32);
+
+  --paper: #fbf6e8;
+  --paper-shade: #f1e6c8;
+  --ink: #1c1610;
+  --ink-soft: #5e4c33;
+  --frame: #b48c45;
+  --frame-soft: rgb(180 140 69 / 0.35);
+
+  --fg: #f4ecdc;
+  --danger: #f1a08f;
+
+  --radius: 14px;
+  --radius-small: 10px;
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --topbar-h: 64px;
+  /* A Mushaf page's height over its width; see mushaf.css. */
+  --page-height: 1.697;
+}
+
+/* The grounds. The carpet pattern over them is in base.css and is the same
+   faint gold on all three. */
+:root,
+:root[data-theme='burgundy'] {
+  --bg: #2a0f14;
+  --bg-deep: #1f0a0e;
+  --surface: #381820;
+  --surface-raised: #452029;
+  --line: rgb(244 236 220 / 0.12);
+  --control-border: #8f6c62;
+  --muted: #cdb8a4;
+}
+:root[data-theme='green'] {
+  --bg: #0c2019;
+  --bg-deep: #08170f;
+  --surface: #133026;
+  --surface-raised: #1a3b2f;
+  --line: rgb(244 236 220 / 0.12);
+  --control-border: #6c8a7b;
+  --muted: #b9c8b8;
+}
+:root[data-theme='blue'] {
+  --bg: #0d1729;
+  --bg-deep: #08101e;
+  --surface: #152440;
+  --surface-raised: #1c2e50;
+  --line: rgb(244 236 220 / 0.12);
+  --control-border: #6c7f9c;
+  --muted: #b8c1d2;
+}

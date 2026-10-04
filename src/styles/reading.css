@@ -1,0 +1,857 @@
+/* The reading screen.
+
+   Three bands of width:
+     phone     < 760    the page and the turn; the circle opens in a sheet
+     tablet  760–1099   the page, and a narrow side column with the circle
+     desktop  ≥ 1100    circle | page | order, sized by the chosen view
+
+   The page is sized by width only (see mushaf.css): its width is the
+   smaller of the column it sits in and the height it is allowed divided by
+   its own shape, `--page-height`. `--stage-h` is that allowed height; each
+   band and view sets it, and nothing else decides how big the Quran is. */
+
+.reading {
+  --stage-h: 100000px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Top bar ---------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: var(--topbar-h);
+  padding: 10px 20px;
+  padding-top: max(10px, env(safe-area-inset-top));
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-status {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  text-align: center;
+  font-size: 15px;
+}
+.topbar-status:hover {
+  color: var(--fg);
+}
+.topbar-status strong {
+  color: var(--gold);
+  font-weight: 600;
+}
+.topbar-clock {
+  font-variant-numeric: tabular-nums;
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.topbar .choice-pills .choice-option {
+  min-height: 36px;
+  padding: 4px 14px;
+  font-size: 14px;
+}
+
+/* ---------- Main grid ---------- */
+
+.reading-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  width: 100%;
+  margin-inline: auto;
+  padding: 20px 16px 0;
+}
+
+.reading-side {
+  display: none;
+}
+
+.reading-quran {
+  display: grid;
+  /* An explicit track, so the widest thing in the column (the action bar
+     on a narrow phone) cannot push the column wider than the screen. */
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  outline: none;
+}
+
+.mushaf-stage {
+  min-width: 0;
+  --page-w: min(100%, calc(var(--stage-h) / var(--page-height)));
+  position: relative;
+  width: 100%;
+  display: grid;
+  gap: 8px;
+}
+.mushaf-stage .mushaf-page {
+  width: var(--page-w);
+}
+
+.page-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.quiet-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  transition:
+    color 160ms var(--ease),
+    background-color 160ms var(--ease);
+}
+.quiet-button:hover {
+  color: var(--fg);
+  background: rgb(255 255 255 / 0.05);
+}
+.page-nav-number {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+/* ---------- The action bar ---------- */
+
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: calc(100% + 32px);
+  margin-inline: -16px;
+  padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--line);
+}
+
+.action-primary {
+  display: grid;
+  justify-items: center;
+  flex: 1;
+  min-width: 0;
+  max-width: 440px;
+  min-height: 60px;
+  padding: 8px 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--on-gold);
+  box-shadow: 0 10px 30px rgb(217 180 105 / 0.18);
+  transition:
+    background-color 160ms var(--ease),
+    transform 160ms var(--ease);
+}
+.action-primary:hover {
+  background: var(--gold-strong);
+}
+.action-primary:active {
+  transform: scale(0.985);
+}
+.action-primary-main {
+  display: inline-flex;
+  white-space: nowrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.action-primary-sub {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1.3;
+  color: color-mix(in srgb, var(--on-gold) 80%, var(--gold));
+}
+
+.action-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  font-size: 14px;
+  white-space: nowrap;
+  transition:
+    background-color 160ms var(--ease),
+    border-color 160ms var(--ease),
+    color 160ms var(--ease);
+}
+.action-secondary:hover {
+  background: var(--surface);
+}
+.action-secondary[data-active],
+.action-secondary[aria-pressed='true'] {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.action-clock {
+  min-width: 3.2em;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.turn-progress {
+  position: absolute;
+  inset-inline: 0;
+  top: -1px;
+  height: 2px;
+  overflow: hidden;
+}
+.turn-progress span {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transform-origin: right;
+  transition: transform 260ms linear;
+}
+
+.toast {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  margin: 0;
+  padding: 8px 18px;
+  border: 1px solid var(--gold-line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--gold);
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.3);
+  transform: translateX(-50%);
+  animation: toast 3.2s var(--ease) both;
+}
+@keyframes toast {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  10%,
+  85% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ---------- The circle ---------- */
+
+.halaqa-circle {
+  --circle-size: 280px;
+  position: relative;
+  width: min(100%, var(--circle-size));
+  aspect-ratio: 1;
+  margin: 0 auto;
+  transition: width 420ms var(--ease);
+}
+.halaqa-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.halaqa-ring-line {
+  fill: none;
+  stroke: var(--gold-line);
+  stroke-width: 1;
+}
+.halaqa-ring-inner {
+  fill: rgb(0 0 0 / 0.14);
+  stroke: var(--line);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+.halaqa-mark {
+  transform-origin: 100px 100px;
+  transition: transform 700ms var(--ease);
+}
+.halaqa-mark-arc {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px rgb(217 180 105 / 0.6));
+}
+
+.halaqa-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  line-height: 1.1;
+}
+.halaqa-center-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+.halaqa-center-page {
+  color: var(--fg);
+  font-family: var(--font-naskh);
+  font-size: calc(var(--circle-size) * 0.14);
+  font-weight: 700;
+}
+
+.halaqa-seat {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 112px;
+  transform: translate(-50%, -26px);
+  text-align: center;
+  line-height: 1.35;
+}
+/* A seat on the upper arc carries its name above it, out of the circle,
+   where the page number in the middle would otherwise collide with it. */
+.halaqa-seat[data-top] {
+  flex-direction: column-reverse;
+  transform: translate(-50%, calc(-100% + 26px));
+}
+.seat-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: var(--surface-raised);
+  box-shadow: 0 0 0 1px var(--control-border);
+  transition:
+    box-shadow 400ms var(--ease),
+    background-color 400ms var(--ease),
+    transform 400ms var(--ease);
+}
+.seat-mark {
+  color: var(--muted);
+  font-family: var(--font-naskh);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1;
+}
+.seat-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+.seat-status {
+  color: var(--muted);
+  font-size: 12px;
+}
+.halaqa-seat[data-active] .seat-avatar {
+  background: var(--gold);
+  box-shadow:
+    0 0 0 3px var(--bg),
+    0 0 0 4.5px var(--gold),
+    0 0 28px rgb(217 180 105 / 0.45);
+  transform: scale(1.08);
+}
+.halaqa-seat[data-active] .seat-mark {
+  color: var(--on-gold);
+}
+.halaqa-seat[data-active] .seat-name {
+  color: var(--fg);
+  font-weight: 600;
+}
+.halaqa-seat[data-active] .seat-status {
+  color: var(--gold);
+  font-weight: 600;
+}
+.halaqa-seat[data-done] .seat-mark {
+  color: var(--gold);
+}
+.seat-progress {
+  position: absolute;
+  inset: -7px;
+  width: calc(100% + 14px);
+  height: calc(100% + 14px);
+  transform: rotate(-90deg) scaleX(-1);
+}
+.seat-progress circle {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 1.6;
+  stroke-dasharray: 100;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 260ms linear;
+}
+
+.progress-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* ---------- Reading order ---------- */
+
+.order {
+  display: grid;
+  gap: 12px;
+}
+.order-title {
+  margin: 0;
+  color: var(--fg);
+  font-size: 15px;
+  font-weight: 600;
+}
+.order-mode {
+  color: var(--gold);
+  font-weight: 500;
+}
+.order-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.order-row {
+  display: grid;
+  grid-template-columns: 22px auto 1fr;
+  grid-template-areas: 'icon when name' 'icon detail detail';
+  align-items: center;
+  column-gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-small);
+  color: var(--muted);
+  transition: background-color 300ms var(--ease);
+}
+.order-icon {
+  grid-area: icon;
+  display: grid;
+  place-items: center;
+  color: var(--gold);
+}
+.order-when {
+  grid-area: when;
+  color: var(--muted);
+  font-size: 12px;
+}
+.order-name {
+  grid-area: name;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg);
+  font-weight: 500;
+}
+.order-detail {
+  grid-area: detail;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.order-row[data-state='now'] {
+  background: var(--gold-soft);
+  box-shadow: inset 0 0 0 1px var(--gold-line);
+}
+.order-row[data-state='now'] .order-when,
+.order-row[data-state='now'] .order-detail {
+  color: var(--gold);
+}
+.order-row[data-state='now'] .order-name {
+  font-weight: 600;
+}
+.order-row[data-state='done'] .order-name,
+.order-row[data-state='skipped'] .order-name {
+  color: var(--muted);
+}
+.order-after {
+  margin: 0;
+  padding-inline: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.mushaf-progress {
+  display: grid;
+  gap: 8px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.mushaf-progress-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.mushaf-progress-bar {
+  display: block;
+  width: 100%;
+  height: 3px;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--line);
+  color: var(--gold);
+}
+.mushaf-progress-bar::-webkit-progress-bar {
+  background: var(--line);
+}
+.mushaf-progress-bar::-webkit-progress-value {
+  background: var(--gold);
+  transition: width 500ms var(--ease);
+}
+.mushaf-progress-bar::-moz-progress-bar {
+  background: var(--gold);
+}
+
+/* ---------- Khatm ---------- */
+
+.khatm {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: min(520px, 100%);
+  margin: 6vh auto;
+  padding: 48px 28px;
+  border: 1px solid var(--gold-line);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  text-align: center;
+  animation: rise 500ms var(--ease) both;
+}
+.khatm-ornament {
+  margin: 0;
+  color: var(--gold);
+  font-family: var(--font-naskh);
+  font-size: 44px;
+  line-height: 1;
+}
+.khatm-title {
+  margin: 0;
+  color: var(--gold);
+  font-family: var(--font-brand);
+  font-size: 34px;
+  font-weight: 600;
+}
+.khatm-text {
+  margin: 0 0 12px;
+  color: var(--fg);
+  font-size: 17px;
+}
+.khatm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* ---------- Phone ---------- */
+
+@media (max-width: 759px) {
+  .topbar {
+    padding-inline: 12px;
+    gap: 8px;
+  }
+  .topbar .brand-name {
+    display: none;
+  }
+  .topbar-status {
+    padding-inline: 4px;
+    font-size: 14px;
+  }
+  .reading-main {
+    padding: 12px 8px 0;
+    gap: 12px;
+  }
+  .action-bar {
+    width: calc(100% + 16px);
+    margin-inline: -8px;
+    padding-inline: 12px;
+    gap: 8px;
+  }
+  .action-secondary {
+    padding: 0;
+    width: 48px;
+  }
+  .action-secondary-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  /* The clock is already in the top bar on a phone; here it would cost the
+     main button its words. */
+  .action-clock {
+    display: none;
+  }
+  .action-primary-main {
+    font-size: 17px;
+  }
+  .mushaf-page {
+    border-radius: 4px;
+  }
+}
+
+.label-short {
+  display: none;
+}
+@media (max-width: 400px) {
+  .label-long {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .label-short {
+    display: inline;
+  }
+  .action-bar {
+    gap: 6px;
+  }
+  .action-secondary {
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* ---------- Tablet ---------- */
+
+@media (min-width: 760px) {
+  .circle-toggle {
+    display: none;
+  }
+  .topbar-status {
+    text-align: start;
+  }
+  .reading-main {
+    grid-template-columns: minmax(0, 1fr) 260px;
+    max-width: 1100px;
+    padding-inline: 24px;
+  }
+  .reading-circle {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    grid-column: 2;
+    grid-row: 1;
+    position: sticky;
+    top: calc(var(--topbar-h) + 20px);
+  }
+  .reading-circle .halaqa-circle {
+    --circle-size: 240px;
+  }
+  .reading-quran {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+  .reading-order {
+    display: block;
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+  }
+  .action-bar {
+    width: 100%;
+    margin-inline: 0;
+    border: 1px solid var(--line);
+    border-bottom: 0;
+    border-radius: 22px 22px 0 0;
+  }
+}
+
+/* ---------- Desktop ---------- */
+
+@media (min-width: 1100px) {
+  .reading {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+  .reading-main {
+    --side: minmax(240px, 320px);
+    --stage-h: calc(100dvh - var(--topbar-h) - 128px);
+    grid-template-columns: var(--side-start, var(--side)) minmax(
+        480px,
+        1fr
+      ) var(--side-end, var(--side));
+    grid-template-rows: minmax(0, 1fr);
+    max-width: 1680px;
+    min-height: 0;
+    padding: 24px 32px 0;
+    gap: 40px;
+    transition: grid-template-columns 420ms var(--ease);
+  }
+  .reading-circle,
+  .reading-order {
+    position: static;
+    grid-row: 1;
+    align-self: center;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+  .reading-circle {
+    grid-column: 1;
+  }
+  .reading-quran {
+    grid-column: 2;
+    grid-row: 1;
+    height: 100%;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 16px;
+  }
+  .mushaf-stage {
+    height: 100%;
+    min-height: 0;
+  }
+  .mushaf-scroll {
+    display: grid;
+    align-content: center;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--control-border) transparent;
+  }
+  /* On a wide screen the page turns from its own edges, like a book, and the
+     page number lives in the top bar, which opens the same jump. */
+  .page-nav {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .page-turn {
+    position: absolute;
+    top: 50%;
+    pointer-events: auto;
+    flex-direction: column;
+    justify-content: center;
+    width: 56px;
+    min-height: 72px;
+    padding: 8px 4px;
+    border-radius: 16px;
+    transform: translateY(-50%);
+  }
+  .page-turn:first-child {
+    right: max(0px, calc(50% - var(--page-w) / 2 - 72px));
+  }
+  .page-turn:last-child {
+    left: max(0px, calc(50% - var(--page-w) / 2 - 72px));
+    flex-direction: column-reverse;
+  }
+  .page-turn-label {
+    font-size: 12px;
+  }
+  .page-nav-number {
+    display: none;
+  }
+  .reading-order {
+    grid-column: 3;
+  }
+  .reading-circle .halaqa-circle {
+    --circle-size: 300px;
+  }
+  .action-bar {
+    max-width: 720px;
+    border-radius: 22px 22px 0 0;
+  }
+
+  /* The Quran view gives the page more height than the screen has and lets
+     it scroll inside its own column: the reader asked for the Quran large,
+     and on a landscape screen height is what runs out first. */
+  .reading[data-view='quran'] .reading-main {
+    --side-start: minmax(200px, 240px);
+    --side-end: minmax(200px, 240px);
+    --stage-h: calc((100dvh - var(--topbar-h) - 128px) * 1.3);
+  }
+  .reading[data-view='quran'] .mushaf-scroll {
+    align-content: start;
+    padding-block: 4px 24px;
+  }
+  .reading[data-view='quran'] .reading-circle .halaqa-circle {
+    --circle-size: 210px;
+  }
+  .reading[data-view='quran'] .halaqa-seat {
+    width: 88px;
+  }
+  .reading[data-view='quran'] .seat-avatar {
+    width: 42px;
+    height: 42px;
+  }
+
+  .reading[data-view='halaqa'] .reading-main {
+    --side-start: minmax(360px, 1.3fr);
+    --side-end: minmax(300px, 1fr);
+    --stage-h: calc((100dvh - var(--topbar-h) - 128px) * 0.74);
+  }
+  .reading[data-view='halaqa'] .reading-circle .halaqa-circle {
+    --circle-size: min(440px, 30vw);
+  }
+  .reading[data-view='halaqa'] .seat-avatar {
+    width: 64px;
+    height: 64px;
+  }
+  .reading[data-view='halaqa'] .seat-mark {
+    font-size: 26px;
+  }
+  .reading[data-view='halaqa'] .seat-name {
+    font-size: 16px;
+  }
+  .reading[data-view='halaqa'] .order-row {
+    padding: 14px 16px;
+    font-size: 17px;
+  }
+}
