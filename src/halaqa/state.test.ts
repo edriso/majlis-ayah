@@ -9,13 +9,14 @@ import {
   newMember,
   reduce,
   sanitizeState,
+  planOf,
   turnPhrase,
   type Action,
   type Config,
   type Member,
   type State,
 } from './state';
-import { readerOf } from './schedule';
+import { readerOf, round } from './schedule';
 
 const run = (config: Partial<Config>, ...actions: Action[]) =>
   actions.reduce(
@@ -181,6 +182,67 @@ describe('the circle', () => {
     });
     expect(t.session!.turn).toBe(s.session!.turn);
     expect(t.session!.anchor).toEqual(s.session!.anchor);
+  });
+
+  describe('in repeat mode, nobody misses the page', () => {
+    const ids = (st: State) => st.session!.config.members.map((m) => m.id);
+    const reading = (st: State) =>
+      st.session!.config.members[where(st).reader].id;
+    const states = (st: State) => {
+      const session = st.session!;
+      return round(planOf(session.config), session.anchor, session.turn).map(
+        (r) => r.state,
+      );
+    };
+    const reorder = (st: State, order: string[]) =>
+      reduce(st, {
+        type: 'configure',
+        config: {
+          ...st.session!.config,
+          members: order.map((id) =>
+            st.session!.config.members.find((m) => m.id === id)!,
+          ),
+        },
+      });
+
+    it('starts the page over when someone who has not read it moves ahead', () => {
+      // p1 is reading page 20 and nobody has read it yet.
+      let s = run({ startPage: 20, mode: 'repeat' });
+      s = reorder(s, ['p2', 'p1', 'p3']);
+      expect(ids(s)).toEqual(['p2', 'p1', 'p3']);
+      expect(reading(s)).toBe('p2');
+      expect(where(s).page).toBe(20);
+      for (const next of ['p1', 'p3']) {
+        s = reduce(s, { type: 'finishTurn' });
+        expect([reading(s), where(s).page]).toEqual([next, 20]);
+      }
+      s = reduce(s, { type: 'finishTurn' });
+      expect([reading(s), where(s).page]).toEqual(['p2', 21]);
+    });
+
+    it('lets the reader carry on when everyone ahead has read the page', () => {
+      // p1 has read page 20; p2 is reading it; a fourth reader joins.
+      let s = run({ startPage: 20, mode: 'repeat' }, { type: 'finishTurn' });
+      const members = [...s.session!.config.members, person('p4', 'زيد')];
+      s = reduce(s, {
+        type: 'configure',
+        config: { ...s.session!.config, members },
+      });
+      expect([reading(s), where(s).page]).toEqual(['p2', 20]);
+      expect(states(s)).toEqual(['done', 'now', 'waiting', 'waiting']);
+    });
+
+    it('puts a reader who has not read the page first, ahead of one who has', () => {
+      let s = run({ startPage: 20, mode: 'repeat' }, { type: 'finishTurn' });
+      s = reorder(s, ['p3', 'p2', 'p1']);
+      expect([reading(s), where(s).page]).toEqual(['p3', 20]);
+    });
+
+    it('changes nothing when only those after the reader are reordered', () => {
+      const s = run({ startPage: 20, mode: 'repeat' }, { type: 'finishTurn' });
+      const t = reorder(s, ['p1', 'p2', 'p3']);
+      expect(t.session!.turn).toBe(s.session!.turn);
+    });
   });
 
   it('seats a reciter like anyone else', () => {

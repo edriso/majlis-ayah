@@ -150,9 +150,8 @@ export function HalaqaForm({
  *
  * Every change is said aloud in a live region, because a reordered list
  * otherwise changes under a screen reader without a word. Focus stays on
- * the moved member's button (React moves the element, not a copy), goes to
- * the new name field when a reader is added, and to the next row when one
- * is taken out.
+ * the button that moved a member, goes to the new name field when a reader
+ * is added, and to the next row when one is taken out.
  */
 function Members({
   members,
@@ -191,6 +190,10 @@ function Members({
     const next = [...members];
     [next[i], next[j]] = [next[j], next[i]];
     onChange(next);
+    // React moves one of the two rows by taking it out and putting it back,
+    // and a row taken out loses focus; so the pressed button is focused
+    // again, wherever its row now is.
+    focusNext.current = `${id}-${members[i].id}-${by < 0 ? 'up' : 'down'}`;
     setMessage(
       `${memberName(members[i])}: المقعد ${arabic(j + 1)} من ${arabic(n)}.`,
     );
@@ -265,6 +268,7 @@ function Members({
               <span className="member-actions">
                 <button
                   type="button"
+                  id={`${id}-${m.id}-up`}
                   className="member-action"
                   onClick={() => move(i, -1)}
                   aria-disabled={i === 0}
@@ -275,6 +279,7 @@ function Members({
                 </button>
                 <button
                   type="button"
+                  id={`${id}-${m.id}-down`}
                   className="member-action"
                   onClick={() => move(i, 1)}
                   aria-disabled={i === n - 1}

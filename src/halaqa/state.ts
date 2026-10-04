@@ -13,6 +13,7 @@ import {
   isBeforeStart,
   pagesOf,
   readerOf,
+  round,
   roundOf,
   type Anchor,
   type Mode,
@@ -266,17 +267,48 @@ export function reduce(state: State, action: Action): State {
       const moved = config.members.findIndex(
         (m) => m.id === s.config.members[seat]?.id,
       );
-      const reader = moved !== -1 ? moved : Math.min(seat, next.readers - 1);
-      const samePlan =
+      let reader = moved !== -1 ? moved : Math.min(seat, next.readers - 1);
+      const repeating = plan.mode === 'repeat' && next.mode === 'repeat';
+      const before = (c: Config, n: number) =>
+        c.members
+          .slice(0, n)
+          .map((m) => m.id)
+          .sort()
+          .join();
+      const unchanged =
         next.readers === plan.readers &&
         next.mode === plan.mode &&
         next.pagesPerTurn === plan.pagesPerTurn &&
-        reader === seat;
-      if (samePlan) return { ...state, config, session: { ...s, config } };
-      /* The shape of the circle changed. Carry on from the page being read,
-         with the same reader, so nobody loses their place; the turns before
-         this one are history either way. */
-      const turn = (roundOf(plan, s.turn) + 1) * next.readers + reader;
+        reader === seat &&
+        (!repeating || before(config, reader) === before(s.config, seat));
+      if (unchanged) return { ...state, config, session: { ...s, config } };
+
+      /* In repeat mode everyone reads the page, in the circle's order. If
+         the change seats anyone ahead of the reader who is still to read
+         this page, the page starts over from the first seat rather than
+         leave them out of it. If everyone ahead has read it, or was passed
+         over by a jump before the change, the reader carries on and they
+         keep their marks. */
+      let ticked = 0;
+      if (repeating) {
+        const was = new Map(
+          round(plan, s.anchor, s.turn).map((r) => [
+            s.config.members[r.reader].id,
+            r.state,
+          ]),
+        );
+        const ahead = config.members.slice(0, reader).map((m) => was.get(m.id));
+        if (ahead.some((st) => st !== 'done' && st !== 'skipped')) reader = 0;
+        // The round's anchor goes after the last one passed over, so those
+        // before it read as passed over and those after it as ticked.
+        else ticked = ahead.lastIndexOf('skipped') + 1;
+      }
+
+      /* Carry on from the page being read, in a fresh round so the turn
+         number names the right member from here on; the turns before this
+         one are history either way. */
+      const start = (roundOf(plan, s.turn) + 1) * next.readers;
+      const turn = start + reader;
       return {
         ...state,
         config,
@@ -284,7 +316,7 @@ export function reduce(state: State, action: Action): State {
           ...s,
           config,
           turn,
-          anchor: anchorAt(turn, currentPage(s)),
+          anchor: anchorAt(repeating ? start + ticked : turn, currentPage(s)),
           pageInTurn: 0,
         },
       };

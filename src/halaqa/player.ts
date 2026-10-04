@@ -65,9 +65,13 @@ const IDLE: PlayerState = {
   total: 0,
 };
 
-/** Two stretches of the same recording this close are one: the next page
-    starts where the last ended, and seeking there would only stutter. */
-const SEAMLESS_MS = 250;
+/** Two stretches of the same recording this close are played as one. The
+    next page usually starts where the last ended, and seeking there would
+    only stutter; a gap of a breath is played through rather than cut; and
+    where a reciter's timestamps overlap (the next page's first ayah said to
+    begin before the last one ends, as one recording's data has it), seeking
+    back would say the overlap twice. */
+const SEAMLESS_MS = 3000;
 
 export class Player {
   private media: Media | null = null;
@@ -165,20 +169,23 @@ export class Player {
   }
 
   /** Unlocks the element for sound started later without a tap. Call it
-      from a tap; it does nothing once the element has played. */
+      from a tap; it does nothing once the element has played. A
+      recitation the browser held back is the sound this tap was waiting
+      for, so it starts instead. */
   prime() {
     if (this.primed) return;
-    this.primed = true;
-    if (this.queue.length) return;
+    if (this.queue.length) {
+      if (this.state.status === 'blocked') this.resume();
+      return;
+    }
     const media = this.element();
     media.src = silence();
     media.play().then(
       () => {
+        this.primed = true;
         if (!this.queue.length) media.pause();
       },
-      () => {
-        this.primed = false;
-      },
+      () => {},
     );
   }
 
@@ -197,6 +204,7 @@ export class Player {
     media.addEventListener('timeupdate', () => this.tick());
     media.addEventListener('ended', () => this.queue.length && this.advance());
     media.addEventListener('playing', () => {
+      this.primed = true;
       if (this.queue.length) this.set({ status: 'playing' });
       this.tick();
     });
@@ -204,9 +212,11 @@ export class Player {
       // Paused by something other than this player: the system, a headset
       // unplugged, another app's sound. A pause on the way to the next
       // file, or at the end of one, is the player's own.
+      const sounding =
+        this.state.status === 'playing' || this.state.status === 'loading';
       if (
         this.queue.length &&
-        this.state.status === 'playing' &&
+        sounding &&
         this.pendingSeek === null &&
         !media.ended
       ) {
@@ -257,6 +267,7 @@ export class Player {
     const key = this.state.key;
     media.play().then(
       () => {
+        this.primed = true;
         if (this.state.key === key && this.queue.length)
           this.set({ status: 'playing' });
       },
@@ -298,8 +309,7 @@ export class Player {
     this.clearTimer();
     if (!next) return this.finish();
     const seamless =
-      sameFile(next.url, current.url) &&
-      Math.abs(next.from - current.to) < SEAMLESS_MS;
+      sameFile(next.url, current.url) && next.from - current.to < SEAMLESS_MS;
     if (next.page !== current.page) {
       this.set({ page: next.page });
       this.onPage?.(next.page);

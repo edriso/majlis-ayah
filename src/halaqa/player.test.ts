@@ -143,6 +143,37 @@ describe('the player', () => {
     expect(player.getState().status).toBe('playing');
   });
 
+  it('starts a held-back recitation on the next tap anywhere', async () => {
+    media.refuse = 'NotAllowedError';
+    player.play('turn', queue);
+    await flush();
+    expect(player.getState().status).toBe('blocked');
+    media.refuse = null;
+    player.prime();
+    await flush();
+    expect(player.getState().status).toBe('playing');
+  });
+
+  it('plays on through stretches whose timestamps overlap', async () => {
+    const pages: number[] = [];
+    player.play(
+      'turn',
+      [
+        { url: fileA, from: 0, to: 60_000, page: 550 },
+        // As one recording's data has it: the next page said to begin
+        // before the last one ends.
+        { url: fileA, from: 54_000, to: 90_000, page: 551 },
+      ],
+      { onPage: (p) => pages.push(p) },
+    );
+    media.load();
+    await flush();
+    media.at(60);
+    expect(pages).toEqual([551]);
+    // No seek back into what was just heard.
+    expect(media.currentTime).toBe(60);
+  });
+
   it('notices a pause it did not make', async () => {
     player.play('turn', queue);
     media.load();
