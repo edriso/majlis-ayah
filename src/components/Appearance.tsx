@@ -2,8 +2,8 @@ import type { Photos, Prefs, Theme, View } from '@/halaqa/state';
 import { Choice } from './Choice';
 
 const THEMES: { value: Theme; label: string }[] = [
-  { value: 'burgundy', label: 'عنّابي' },
   { value: 'green', label: 'أخضر' },
+  { value: 'burgundy', label: 'عنّابي' },
   { value: 'blue', label: 'أزرق' },
   { value: 'sand', label: 'رملي' },
 ];

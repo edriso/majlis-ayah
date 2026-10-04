@@ -281,7 +281,7 @@ add a control to the bar, measure again.
 
 ## Themes
 
-Four, in `src/styles/tokens.css`: burgundy, green and blue are the carpet at
+Four, in `src/styles/tokens.css`: green (the default), burgundy and blue are the carpet at
 night; sand is the courtyard by day, a light theme in which the gold deepens
 to bronze so it still passes as text. A theme sets colours and nothing else.
 Stylesheets never write a colour of their own: translucent tints come from

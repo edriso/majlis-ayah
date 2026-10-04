@@ -150,7 +150,7 @@ turn cut short at page 604 by what is left.
 ## Saved state
 
 `sanitizeState()` is the only way stored data comes back in. It repairs
-rather than rejects: an unknown theme becomes burgundy, a page out of range
+rather than rejects: an unknown theme becomes green, a page out of range
 becomes 1, an anchor after the turn becomes turn 0, a duplicate or malformed
 member id is replaced, an unknown reciter becomes the default one, and a
 halaqa saved before reciters could sit (`readers`, a list of names) becomes

@@ -88,7 +88,7 @@ export const defaultConfig: Config = {
 };
 
 export const defaultPrefs: Prefs = {
-  theme: 'burgundy',
+  theme: 'green',
   view: 'balanced',
   photos: 'show',
 };
@@ -332,7 +332,7 @@ export function reduce(state: State, action: Action): State {
   }
 }
 
-const themes: Theme[] = ['burgundy', 'green', 'blue', 'sand'];
+const themes: Theme[] = ['green', 'burgundy', 'blue', 'sand'];
 const views: View[] = ['quran', 'balanced', 'halaqa'];
 const photoModes: Photos[] = ['show', 'blur', 'hide'];
 
@@ -405,7 +405,7 @@ export function sanitizeState(raw: unknown): State {
   const r = (raw ?? {}) as Partial<State>;
   const p = (r.prefs ?? {}) as Partial<Prefs>;
   const prefs: Prefs = {
-    theme: themes.includes(p.theme as Theme) ? (p.theme as Theme) : 'burgundy',
+    theme: themes.includes(p.theme as Theme) ? (p.theme as Theme) : 'green',
     view: views.includes(p.view as View) ? (p.view as View) : 'balanced',
     photos: photoModes.includes(p.photos as Photos)
       ? (p.photos as Photos)

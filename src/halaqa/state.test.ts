@@ -304,7 +304,7 @@ describe('a saved halaqa', () => {
       session: { turn: -3, anchor: { turn: 5, page: 0 }, config: {} },
     });
     expect(s.prefs).toEqual({
-      theme: 'burgundy',
+      theme: 'green',
       view: 'balanced',
       photos: 'show',
     });

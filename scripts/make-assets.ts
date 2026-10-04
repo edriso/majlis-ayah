@@ -28,7 +28,7 @@ const fonts =
 const ground = `
   background:
     radial-gradient(ellipse 80% 60% at 50% 0%, rgb(255 222 160 / 0.14), transparent 70%),
-    #2a0f14;`;
+    #0c2019;`;
 
 function shoot(name: string, width: number, height: number, body: string) {
   const html = join(work, `${name}.html`);
