@@ -16,7 +16,9 @@ const ASSETS = `majlis-ayah-assets-${VERSION}`;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(SHELL).then((cache) => cache.add(new URL('./', self.registration.scope))),
+    caches
+      .open(SHELL)
+      .then((cache) => cache.add(new URL('./', self.registration.scope))),
   );
   self.skipWaiting();
 });
@@ -41,7 +43,8 @@ const cacheFirst = async (request) => {
   const hit = await cache.match(request);
   if (hit) return hit;
   const response = await fetch(request);
-  if (response.ok || response.type === 'opaque') cache.put(request, response.clone());
+  if (response.ok || response.type === 'opaque')
+    cache.put(request, response.clone());
   return response;
 };
 
@@ -52,7 +55,11 @@ const networkFirst = async (request) => {
     if (response.ok) cache.put(request, response.clone());
     return response;
   } catch {
-    return (await cache.match(request)) || (await cache.match(new URL('./', self.registration.scope))) || Response.error();
+    return (
+      (await cache.match(request)) ||
+      (await cache.match(new URL('./', self.registration.scope))) ||
+      Response.error()
+    );
   }
 };
 
@@ -70,7 +77,12 @@ self.addEventListener('fetch', (event) => {
     url.hostname === 'static.qurancdn.com' ||
     url.hostname === 'fonts.gstatic.com' ||
     url.hostname === 'fonts.googleapis.com';
-  if (isFont || (sameOrigin && (url.pathname.includes('/assets/') || url.pathname.includes('/reciters/')))) {
+  if (
+    isFont ||
+    (sameOrigin &&
+      (url.pathname.includes('/assets/') ||
+        url.pathname.includes('/reciters/')))
+  ) {
     event.respondWith(cacheFirst(request));
   }
 });

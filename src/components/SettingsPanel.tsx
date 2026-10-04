@@ -176,8 +176,17 @@ export function SettingsPanel({
           <a href="https://quranicaudio.com" target="_blank" rel="noreferrer">
             QuranicAudio
           </a>
-          . يُحفظ كل شيء على جهازك وحده، ولا يُرسل إلى أحد.
+          . صور القرّاء من ويكيميديا كومنز، ومصدر كل صورة وترخيصها في{' '}
+          <a
+            href="https://github.com/edriso/majlis-ayah/blob/main/NOTICE"
+            target="_blank"
+            rel="noreferrer"
+          >
+            ملف المصادر
+          </a>
+          .
         </p>
+        <p>يُحفظ كل شيء على جهازك وحده، ولا يُرسل إلى أحد.</p>
         <p>
           <a
             href="https://github.com/edriso/majlis-ayah"

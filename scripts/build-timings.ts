@@ -41,7 +41,8 @@ type PageLine = { t: string; w?: [string, string][] };
 async function chapter(qdc: number, n: number): Promise<AudioFile> {
   const path = `${CACHE}/${qdc}/${n}.json`;
   if (!existsSync(path)) {
-    if (offline) throw new Error(`${path} is not cached and --offline was given`);
+    if (offline)
+      throw new Error(`${path} is not cached and --offline was given`);
     const url = `${API}/${qdc}/audio_files?chapter=${n}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`${url}: ${res.status}`);
@@ -104,7 +105,8 @@ for (const reciter of reciters) {
   }
 
   const empty = pages.findIndex((list) => list.length === 0);
-  if (empty !== -1) throw new Error(`${reciter.id}: page ${empty + 1} is empty`);
+  if (empty !== -1)
+    throw new Error(`${reciter.id}: page ${empty + 1} is empty`);
 
   await writeFile(
     `${OUT}/${reciter.id}.json`,
