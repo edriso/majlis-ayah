@@ -1,28 +1,27 @@
-/* The reading screen.
+/* The reading screen: one column the height of the screen, never scrolled.
 
-   Three bands of width:
-     phone     < 760    the page and the turn; the circle opens in a sheet
-     tablet  760–1099   the page, and a narrow side column with the circle
-     desktop  ≥ 1100    circle | page, sized by the chosen view
+     top bar      whose turn and which page, the page/circle switch, settings
+     main         the Mushaf page, or the circle
+     action bar   the buttons that pass the turn on, under both
 
-   The page is sized by width only (see mushaf.css): its width is the
-   smaller of the column it sits in and the height it is allowed divided by
-   its own shape, `--page-height`. `--stage-h` is that allowed height; each
-   band and view sets it, and nothing else decides how big the Quran is. */
+   The page is sized by both sides of the room it has (its shape,
+   `--page-height`, is in tokens.css and itemised in mushaf.css): as wide as
+   the room allows and no taller than it, so it is always whole on screen,
+   on a phone or a wall. The circle is sized the same way in its view. The
+   only rules per screen width are the words that give way on a phone. */
 
 .reading {
-  --stage-h: 100000px;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* ---------- Top bar ---------- */
 
 .topbar {
-  position: sticky;
-  top: 0;
+  flex: none;
   z-index: 20;
   display: flex;
   align-items: center;
@@ -31,7 +30,6 @@
   padding: 10px 20px;
   padding-top: max(10px, env(safe-area-inset-top));
   background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
 }
 .topbar-status {
@@ -47,7 +45,7 @@
   border-radius: 999px;
   background: transparent;
   color: var(--muted);
-  text-align: center;
+  text-align: start;
   font-size: 15px;
 }
 .topbar-status:hover {
@@ -65,50 +63,70 @@
   align-items: center;
   gap: 10px;
 }
-.topbar .choice-pills .choice-option {
-  min-height: 36px;
-  padding: 4px 14px;
+/* The switch between the page and the circle: an icon, and from a tablet
+   up the word for where it goes. */
+.topbar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
   font-size: 14px;
+  font-weight: 500;
+  transition:
+    background-color 160ms var(--ease),
+    border-color 160ms var(--ease);
+}
+.topbar-toggle:hover {
+  border-color: var(--gold);
+  background: var(--surface);
+}
+.topbar-toggle svg {
+  color: var(--gold);
 }
 
-/* ---------- Main grid ---------- */
+/* ---------- Main ---------- */
 
 .reading-main {
   flex: 1;
+  min-height: 0;
   display: grid;
+  grid-template-rows: minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr);
-  gap: 28px;
-  width: 100%;
-  margin-inline: auto;
-  padding: 20px 16px 0;
-}
-
-.reading-side {
-  display: none;
-}
-
-.reading-quran {
-  display: grid;
-  /* An explicit track, so the widest thing in the column (the action bar
-     on a narrow phone) cannot push the column wider than the screen. */
-  grid-template-columns: minmax(0, 1fr);
-  justify-items: center;
-  align-content: start;
-  gap: 12px;
-  min-width: 0;
+  padding: 16px 16px 8px;
   outline: none;
 }
 
-.mushaf-stage {
-  min-width: 0;
-  --page-w: min(100%, calc(var(--stage-h) / var(--page-height)));
-  position: relative;
-  width: 100%;
+/* The page's room. A size container, so the page inside can be sized by
+   both its sides at once. On a screen too short to show a page at a size
+   anyone can read (a phone on its side) the page keeps that size, 220px
+   wide, and this room scrolls instead. */
+.mushaf-view {
   display: grid;
-  gap: 8px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 6px;
+  min-height: 0;
+}
+.mushaf-stage {
+  container-type: size;
+  display: grid;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--control-border) transparent;
 }
 .mushaf-stage .mushaf-page {
-  width: var(--page-w);
+  width: max(min(100cqw, 100cqh / var(--page-height)), min(100cqw, 220px));
+  /* Centred both ways, and to the top when it is taller than its room,
+     which a centred grid item would push out of reach above. */
+  margin: auto;
 }
 
 .page-nav {
@@ -141,22 +159,35 @@
   color: var(--fg);
 }
 
+/* The circle's room: the circle as large as it fits, with the names
+   around it and where the halaqa is under it. */
+.circle-view {
+  container-type: size;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 20px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-block: 8px;
+}
+.circle-view .halaqa-circle {
+  --circle-size: max(220px, min(540px, 100cqw - 110px, 100cqh - 250px));
+}
+
 /* ---------- The action bar ---------- */
 
 .action-bar {
   container-type: inline-size;
-  position: sticky;
-  bottom: 0;
+  position: relative;
+  flex: none;
   z-index: 15;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  width: calc(100% + 32px);
-  margin-inline: -16px;
   padding: 12px 16px max(12px, env(safe-area-inset-bottom));
   background: color-mix(in srgb, var(--bg) 92%, transparent);
-  backdrop-filter: blur(10px);
   border-top: 1px solid var(--line);
 }
 
@@ -273,9 +304,9 @@
   font-weight: 600;
 }
 
-/* When the bar is narrow (a phone, or the page column in the Halaqa view,
-   or a small desktop) the secondary actions give up their words, which they
-   keep as names for screen readers, so the main button keeps its own. */
+/* When the bar is narrow (a phone) the secondary actions give up their
+   words, which they keep as names for screen readers, so the main button
+   keeps its own. */
 @container (max-width: 560px) {
   .action-secondary {
     width: 48px;
@@ -358,11 +389,11 @@
    above it, out of the box; this is the room for it. */
 .halaqa-circle[data-readers='3'],
 .halaqa-circle[data-readers='4'] {
-  margin-top: 44px;
+  margin-top: 60px;
 }
 /* A lone reader sits at the foot of the circle, with the name below it. */
 .halaqa-circle[data-readers='1'] {
-  margin-bottom: 56px;
+  margin-bottom: 64px;
 }
 .halaqa-ring {
   position: absolute;
@@ -404,7 +435,7 @@
 }
 .halaqa-center-label {
   color: var(--muted);
-  font-size: 12px;
+  font-size: clamp(12px, 3.6cqi, 16px);
 }
 .halaqa-center-page {
   color: var(--fg);
@@ -413,14 +444,16 @@
   font-weight: 700;
 }
 
+/* Seats, names and marks are measured in the circle's own width (cqi), so
+   a circle drawn across a room has seats to match. */
 .halaqa-seat {
-  --seat-size: 52px;
+  --seat-size: clamp(46px, 15cqi, 80px);
   position: absolute;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  width: 112px;
+  width: clamp(100px, 32cqi, 170px);
   /* The avatar's centre, not the box's, sits on the ring. */
   transform: translate(-50%, calc(var(--seat-size) / -2));
   text-align: center;
@@ -474,8 +507,12 @@
   color: var(--muted);
   font-family: var(--font-naskh);
   font-weight: 700;
-  font-size: 22px;
+  font-size: clamp(20px, 6.5cqi, 32px);
   line-height: 1;
+}
+.seat-mark svg {
+  width: 45%;
+  height: auto;
 }
 .seat-name {
   max-width: 100%;
@@ -483,7 +520,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--muted);
-  font-size: 14px;
+  font-size: clamp(14px, 4.4cqi, 19px);
   font-weight: 500;
 }
 .seat-status {
@@ -491,7 +528,7 @@
   align-items: center;
   gap: 5px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: clamp(12px, 3.4cqi, 14px);
 }
 /* Three bars that move while a reciter can be heard. */
 .seat-sound {
@@ -665,13 +702,17 @@
     padding-inline: 4px;
     font-size: 14px;
   }
+  .topbar-toggle {
+    width: 44px;
+    padding: 0;
+  }
+  .topbar-toggle-label {
+    display: none;
+  }
   .reading-main {
-    padding: 12px 8px 0;
-    gap: 12px;
+    padding: 10px 8px 4px;
   }
   .action-bar {
-    width: calc(100% + 16px);
-    margin-inline: -8px;
     padding-inline: 12px;
     gap: 8px;
   }
@@ -721,173 +762,19 @@
   }
 }
 
-/* ---------- Tablet ---------- */
-
-@media (min-width: 760px) {
-  .circle-toggle {
+/* A short screen gives every line of height to the page: it turns with
+   the buttons below, and the line at the top opens any page. */
+@media (max-height: 700px) {
+  .page-nav {
     display: none;
-  }
-  .topbar-status {
-    text-align: start;
-  }
-  .reading-main {
-    grid-template-columns: 260px minmax(0, 1fr);
-    max-width: 1100px;
-    padding-inline: 24px;
-  }
-  .reading-side {
-    display: grid;
-    align-content: start;
-    gap: 12px;
-  }
-  .reading-side .halaqa-circle {
-    --circle-size: 240px;
-  }
-  .action-bar {
-    width: 100%;
-    margin-inline: 0;
-    border: 1px solid var(--line);
-    border-bottom: 0;
-    border-radius: 22px 22px 0 0;
   }
 }
-
-/* ---------- Desktop ---------- */
-
-/* Two columns: the circle, at the start where a right-to-left eye begins,
-   and the page. The views move the room between them. The page column
-   keeps a little more room on its far side than its near one, so the page
-   sits nearer the middle of the screen than of its column. */
-@media (min-width: 1100px) {
-  .reading {
-    height: 100vh;
-    height: 100dvh;
-    overflow: hidden;
-  }
+/* A phone on its side. */
+@media (max-height: 520px) {
   .reading-main {
-    --side: clamp(280px, 24vw, 360px);
-    --stage-h: calc(100dvh - var(--topbar-h) - 128px);
-    /* The page's column is as wide as the page and its turning arrows, and
-       no wider, so the circle and the page sit together as one pair in the
-       middle of the screen instead of at its two edges. */
-    grid-template-columns:
-      var(--side)
-      minmax(480px, calc(var(--stage-h) / var(--page-height) + 176px));
-    grid-template-rows: minmax(0, 1fr);
-    justify-content: center;
-    max-width: none;
-    min-height: 0;
-    padding: 24px 32px 0;
-    gap: 40px;
-  }
-  .reading-side {
-    grid-row: 1;
-    align-self: center;
-    align-content: center;
-    gap: 20px;
-    max-height: 100%;
-    overflow-y: auto;
-    padding-block: 8px;
-  }
-  .reading-quran {
-    grid-row: 1;
-    height: 100%;
-    grid-template-rows: minmax(0, 1fr) auto;
-    gap: 16px;
-  }
-  .mushaf-stage {
-    height: 100%;
-    min-height: 0;
-  }
-  .mushaf-scroll {
-    display: grid;
-    align-content: center;
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scrollbar-width: thin;
-    scrollbar-color: var(--control-border) transparent;
-  }
-  /* On a wide screen the page turns from its own edges, like a book, and the
-     page number lives in the top bar, which opens the same jump. */
-  .page-nav {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-  }
-  .page-turn {
-    position: absolute;
-    top: 50%;
-    pointer-events: auto;
-    flex-direction: column;
-    justify-content: center;
-    width: 56px;
-    min-height: 72px;
-    padding: 8px 4px;
-    border-radius: 16px;
-    transform: translateY(-50%);
-  }
-  .page-turn:first-child {
-    right: max(0px, calc(50% - var(--page-w) / 2 - 72px));
-  }
-  .page-turn:last-child {
-    left: max(0px, calc(50% - var(--page-w) / 2 - 72px));
-    flex-direction: column-reverse;
-  }
-  .page-turn-label {
-    font-size: 12px;
-  }
-  .page-nav-number {
-    display: none;
-  }
-  .reading-side .halaqa-circle {
-    --circle-size: 320px;
+    padding-block: 6px 2px;
   }
   .action-bar {
-    max-width: 720px;
-    border-radius: 22px 22px 0 0;
-  }
-
-  /* The Quran view gives the page more height than the screen has and lets
-     it scroll inside its own column: the reader asked for the Quran large,
-     and on a landscape screen height is what runs out first. The circle
-     keeps to a corner of the room. */
-  .reading[data-view='quran'] .reading-main {
-    --side: clamp(220px, 17vw, 260px);
-    --stage-h: calc((100dvh - var(--topbar-h) - 128px) * 1.3);
-  }
-  .reading[data-view='quran'] .mushaf-scroll {
-    align-content: start;
-    padding-block: 4px 24px;
-  }
-  .reading[data-view='quran'] .reading-side .halaqa-circle {
-    --circle-size: 210px;
-  }
-  .reading[data-view='quran'] .halaqa-seat {
-    --seat-size: 42px;
-    width: 88px;
-  }
-
-  /* The Halaqa view is for whoever runs the sitting: the circle large
-     enough to read across a room, the page beside it still whole. */
-  .reading[data-view='halaqa'] .reading-main {
-    --side: min(560px, 38vw);
-    --stage-h: calc((100dvh - var(--topbar-h) - 128px) * 0.8);
-  }
-  .reading[data-view='halaqa'] .reading-side .halaqa-circle {
-    --circle-size: min(460px, 32vw, calc(100dvh - var(--topbar-h) - 280px));
-  }
-  .reading[data-view='halaqa'] .halaqa-seat {
-    --seat-size: 64px;
-    width: 132px;
-  }
-  .reading[data-view='halaqa'] .seat-mark {
-    font-size: 26px;
-  }
-  .reading[data-view='halaqa'] .seat-name {
-    font-size: 16px;
-  }
-  .reading[data-view='halaqa'] .seat-status {
-    font-size: 13px;
+    padding-block: 6px max(6px, env(safe-area-inset-bottom));
   }
 }

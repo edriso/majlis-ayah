@@ -3,6 +3,7 @@ import { arabic } from '@/data/arabic';
 import { surahOfPage } from '@/data/mushaf';
 import { reciterById } from '@/data/reciters';
 import { loadTimings, recitationOf, type Timings } from '@/data/timings';
+import { wakeChime } from './chime';
 import { Player, type Meta, type PlayerStatus } from './player';
 
 /** The app's one player for the halaqa's recitations, on the one audio
@@ -13,6 +14,13 @@ export const player = new Player(() => new Audio());
     only ever started by a tap, so it needs none of the first one's
     unlocking, and it keeps off the lock screen. */
 const sampler = new Player(() => new Audio(), { session: false });
+
+/** Call from every tap: it lets a phone sound a recitation, or the turn's
+    tone, that later starts with no tap of its own. */
+export function wakeSound() {
+  player.prime();
+  wakeChime();
+}
 
 export function usePlayer() {
   return useSyncExternalStore(
@@ -47,20 +55,18 @@ export function useTimings(ids: readonly string[]) {
   return { timings: loaded, retry: () => setAttempt((a) => a + 1) };
 }
 
-/** What the lock screen and a headset show for a recitation: the photo
-    only where the reader has photos shown. */
-function metaFor(reciter: string, page: number, showPhoto: boolean): Meta {
+/** What the lock screen and a headset show for a recitation. Whether the
+    photo is shown there is the player's to decide (`setArtwork`), from the
+    reader's photos setting. */
+function metaFor(reciter: string, page: number): Meta {
   const r = reciterById(reciter);
   return {
     title: `سورة ${surahOfPage(page).name} · الصفحة ${arabic(page)}`,
     artist: r.name,
-    artwork:
-      r.photo && showPhoto
-        ? new URL(
-            `${import.meta.env.BASE_URL}reciters/${r.photo}`,
-            location.href,
-          ).href
-        : undefined,
+    artwork: r.photo
+      ? new URL(`${import.meta.env.BASE_URL}reciters/${r.photo}`, location.href)
+          .href
+      : undefined,
   };
 }
 
@@ -81,10 +87,10 @@ export function useReciterTurn({
   pages,
   page,
   timings,
+  rate,
   onPage,
   onDone,
   onRetry,
-  showPhoto,
 }: {
   /** The reciter whose turn it is, or null on a reader's turn. */
   reciter: string | null;
@@ -92,11 +98,12 @@ export function useReciterTurn({
   pages: readonly number[];
   page: number;
   timings: Record<string, Timings | null>;
+  /** The playback speed, so the time left is time on the clock. */
+  rate: number;
   onPage: (page: number) => void;
   onDone: () => void;
   /** Asks for timings that would not load. */
   onRetry: () => void;
-  showPhoto: boolean;
 }) {
   const state = usePlayer();
   const t = reciter ? timings[reciter] : undefined;
@@ -105,9 +112,9 @@ export function useReciterTurn({
 
   // The latest callbacks and page, read when the recitation starts and as
   // it goes, without making either restart it.
-  const latest = useRef({ page, onPage, onDone, showPhoto });
+  const latest = useRef({ page, onPage, onDone });
   useEffect(() => {
-    latest.current = { page, onPage, onDone, showPhoto };
+    latest.current = { page, onPage, onDone };
   });
 
   useEffect(() => {
@@ -117,7 +124,7 @@ export function useReciterTurn({
       start,
       onPage: (p) => latest.current.onPage(p),
       onDone: () => latest.current.onDone(),
-      meta: metaFor(reciter, start, latest.current.showPhoto),
+      meta: metaFor(reciter, start),
     });
     return () => player.stop(key);
   }, [key, reciter, t, pagesKey]);
@@ -139,9 +146,9 @@ export function useReciterTurn({
 
   return {
     status,
-    /** Milliseconds left in the turn, once its recitation is known. */
-    left: mine ? Math.max(0, state.total - state.played) : null,
-    total: mine ? state.total : null,
+    /** Time left in the turn, once its recitation is known. */
+    left: mine ? Math.max(0, state.total - state.played) / rate : null,
+    total: mine ? state.total / rate : null,
     /** Pause, carry on, start after the browser asked for a tap, or try
         again after a failure. */
     toggle: () => {
@@ -153,28 +160,29 @@ export function useReciterTurn({
 }
 
 /**
- * «استمع»: the halaqa's reciter reciting the open page, for a reader to
- * hear before reading it or to check a word after. It pauses and resumes
- * like any recording, and stops when the turn or the page changes, so the
- * reciter never carries on over the next reader.
+ * «استمع»: the halaqa's reciter reciting the open page, once or as many
+ * times as the reader set, to hear before reading it or to check a word
+ * after. It pauses and resumes like any recording, and stops when the turn
+ * or the page changes, so the reciter never carries on over the next
+ * reader.
  *
  * If his timings are still loading when it is pressed, the button says so,
- * and a recitation that arrives after the page or the turn has moved on, or
- * after a second press, is dropped rather than played over whoever reads
- * next.
+ * and a recitation that arrives after the page or the turn has moved on,
+ * after a second press, or after the halaqa has closed, is dropped rather
+ * than played over whoever reads next.
  */
 export function useListen({
   reciter,
   turnKey,
   page,
   timings,
-  showPhoto,
+  repeat,
 }: {
   reciter: string;
   turnKey: string;
   page: number;
   timings: Record<string, Timings | null>;
-  showPhoto: boolean;
+  repeat: number;
 }) {
   const state = usePlayer();
   const key = `listen:${turnKey}:${reciter}:${page}`;
@@ -182,11 +190,17 @@ export function useListen({
     key: string;
     status: 'loading' | 'error';
   } | null>(null);
-  const live = useRef(key);
-  const attempt = useRef(0);
+  // One token per page and turn: it dies when they change or the halaqa
+  // closes, and counts presses, so a load can tell whether anyone still
+  // waits for it.
+  const live = useRef({ alive: false, presses: 0 });
   useEffect(() => {
-    live.current = key;
-    return () => player.stop(key);
+    const token = { alive: true, presses: 0 };
+    live.current = token;
+    return () => {
+      token.alive = false;
+      player.stop(key);
+    };
   }, [key]);
 
   const raw = state.key === key ? state.status : 'idle';
@@ -198,27 +212,33 @@ export function useListen({
         : raw;
 
   const start = () => {
-    const mine = ++attempt.current;
+    const token = live.current;
+    const mine = ++token.presses;
+    const current = () => token.alive && token.presses === mine;
+    // Whatever becomes of a load nothing waits for any more, the button is
+    // not left saying that something does.
+    const settle = (next: typeof pending) =>
+      setPending((p) => (p?.key === key ? next : p));
     const go = (t: Timings) => {
-      if (live.current !== key || attempt.current !== mine) return;
-      setPending(null);
-      player.play(key, recitationOf(t, [page]), {
-        meta: metaFor(reciter, page, showPhoto),
+      settle(null);
+      if (!current()) return;
+      const once = recitationOf(t, [page]);
+      player.play(key, Array.from({ length: repeat }, () => once).flat(), {
+        meta: metaFor(reciter, page),
       });
     };
     const t = timings[reciter];
     if (t) return go(t);
     setPending({ key, status: 'loading' });
-    loadTimings(reciter).then(go, () => {
-      if (live.current === key && attempt.current === mine)
-        setPending({ key, status: 'error' });
-    });
+    loadTimings(reciter).then(go, () =>
+      settle(current() ? { key, status: 'error' } : null),
+    );
   };
 
   /** Pauses it if it is sounding, and says whether it was. */
   const pause = () => {
     if (pending?.key === key && pending.status === 'loading') {
-      attempt.current++;
+      live.current.presses++;
       setPending(null);
       return false;
     }
@@ -242,12 +262,25 @@ export function useListen({
   };
 }
 
+/** The halaqa's recitation a sample paused, to carry on when it stops. */
+let held: string | null = null;
+
+/** Carries the halaqa's recitation on, if a sample paused it and it is
+    still the same recitation, still paused. */
+function releaseHeld() {
+  const was = held;
+  held = null;
+  const now = player.getState();
+  if (was && now.key === was && now.status === 'paused') player.resume();
+}
+
 /**
  * A reciter's voice, heard before he is chosen: his al-Fatiha, which every
  * reader knows, so the voices and their pace are heard side by side on the
- * same words. One at a time: a second press stops it, another reciter's
- * press replaces it, closing the list ends it, and the halaqa's own
- * recitation pauses while it plays and stops it if it starts again.
+ * same words, at their own speed. One at a time: a second press stops it,
+ * another reciter's press replaces it, closing the list ends it. The
+ * halaqa's own recitation waits while it plays and carries on when it
+ * stops; if that recitation starts again some other way, the sample stops.
  */
 export function useSample(timings: Record<string, Timings | null>) {
   const state = useSyncExternalStore(
@@ -256,16 +289,24 @@ export function useSample(timings: Record<string, Timings | null>) {
     sampler.getState,
   );
   const main = usePlayer();
-  useEffect(() => () => sampler.stop(), []);
+  const sounding = state.status === 'playing' || state.status === 'loading';
+
+  useEffect(
+    () => () => {
+      sampler.stop();
+      releaseHeld();
+    },
+    [],
+  );
   useEffect(() => {
     if (main.status === 'playing') sampler.stop();
   }, [main.status]);
+  useEffect(() => {
+    if (!sounding) releaseHeld();
+  }, [sounding]);
 
   const phase = (id: string) =>
-    state.key === `sample:${id}` &&
-    (state.status === 'playing' || state.status === 'loading')
-      ? state.status
-      : undefined;
+    state.key === `sample:${id}` && sounding ? state.status : undefined;
 
   return {
     phase,
@@ -273,7 +314,11 @@ export function useSample(timings: Record<string, Timings | null>) {
       if (phase(id)) return sampler.stop();
       const t = timings[id];
       if (!t) return;
-      player.pause();
+      const now = player.getState();
+      if (now.status === 'playing' || now.status === 'loading') {
+        held = now.key;
+        player.pause();
+      }
       sampler.play(`sample:${id}`, recitationOf(t, [1]));
     },
   };

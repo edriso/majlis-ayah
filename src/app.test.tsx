@@ -116,7 +116,7 @@ describe('the start screen', () => {
     render(<App />);
     const photos = () => document.querySelectorAll('img.reciter-photo');
     expect(photos().length).toBeGreaterThan(0);
-    await user.click(screen.getByRole('button', { name: 'المظهر' }));
+    await user.click(screen.getByRole('button', { name: 'الإعدادات' }));
     await user.click(screen.getByRole('radio', { name: 'مموّهة' }));
     expect([...photos()].every((img) => img.hasAttribute('data-blur'))).toBe(
       true,
@@ -202,6 +202,18 @@ describe('a halaqa', () => {
     expect(
       await screen.findByRole('button', { name: 'إيقاف الاستماع مؤقتًا' }),
     ).toBeTruthy();
+  });
+
+  it('gives a timed reader the allowance the halaqa chose', async () => {
+    // Al-Fatiha, which al-Husary recites in 48 seconds: half as long again
+    // is a minute and some, where without it the clock would show ٠:٤٩.
+    localStorage.setItem(
+      'majlis-noor:v1',
+      JSON.stringify({ config: { turnChange: 'reciter', allowance: 1.5 } }),
+    );
+    await start();
+    // In the top line and on the pause button.
+    expect(await screen.findAllByText(/١:١[٠-٣]/)).toHaveLength(2);
   });
 
   it('announces whose turn it is to a screen reader', async () => {

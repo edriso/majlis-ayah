@@ -13,6 +13,7 @@ import {
   MAX_MEMBERS,
   memberName,
   newMember,
+  type Allowance,
   type Config,
   type Member,
   type MemberKind,
@@ -114,6 +115,23 @@ export function HalaqaForm({
             },
           ]}
         />
+        {config.turnChange === 'reciter' ? (
+          <div className="field">
+            <Choice<Allowance>
+              legend="مهلة الدور"
+              value={config.allowance}
+              onChange={(allowance) => set({ allowance })}
+              options={[
+                { value: 1, label: 'كتلاوته' },
+                { value: 1.25, label: 'أطول بالربع' },
+                { value: 1.5, label: 'أطول بالنصف' },
+              ]}
+            />
+            <p className="field-note">
+              يقرأ الناس أبطأ من القارئ المتقن، والصغار أبطأ منهم.
+            </p>
+          </div>
+        ) : null}
         <button
           type="button"
           className="reciter-button"

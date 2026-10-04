@@ -3,7 +3,7 @@ import { PhotosContext } from './components/photos';
 import { ReadingScreen } from './screens/ReadingScreen';
 import { SetupScreen } from './screens/SetupScreen';
 import { useHalaqa } from './halaqa/useHalaqa';
-import { player } from './halaqa/useRecitation';
+import { player, wakeSound } from './halaqa/useRecitation';
 import {
   currentPage,
   isComplete,
@@ -30,7 +30,12 @@ export const THEME_COLOR: Record<Theme, string> = {
 export function App() {
   const [state, dispatch] = useHalaqa();
   const [reading, setReading] = useState(false);
-  const { theme } = state.prefs;
+  const { theme, speed, photos } = state.prefs;
+
+  // How recitations sound and what the lock screen shows follow the
+  // reader's settings, from whichever screen they were changed on.
+  useEffect(() => player.setRate(speed), [speed]);
+  useEffect(() => player.setArtwork(photos === 'show'), [photos]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -42,7 +47,7 @@ export function App() {
   // The press that opens a halaqa is the one a phone needs to let a
   // reciter seated first, or later, be heard (see player.ts).
   const open = (go: () => void) => {
-    player.prime();
+    wakeSound();
     go();
     setReading(true);
     window.scrollTo(0, 0);

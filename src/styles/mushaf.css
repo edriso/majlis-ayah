@@ -4,7 +4,8 @@
    so the page is the same page at 320px and at 900px, only larger. The page
    is therefore a fixed shape, `--page-height` times its width (declared in
    tokens.css, since the layout around the page needs it too), and the layout
-   fits it to the room it has by width alone (see reading.css). Keep
+   fits it whole into the room it has, by width and height (see
+   reading.css). Keep
    `--page-height` in step with the parts below if any of them changes:
 
      3.2       above the running head        3.2

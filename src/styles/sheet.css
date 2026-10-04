@@ -123,11 +123,6 @@
   background: #eadcc0;
 }
 
-.sheet-halaqa {
-  display: grid;
-  gap: 24px;
-}
-
 @media (max-width: 759px) {
   .sheet {
     inset-block: auto 0;

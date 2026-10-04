@@ -9,7 +9,7 @@
 }
 
 /* The gear sits at the far corner, away from where the eye starts. */
-.setup-appearance {
+.setup-settings {
   position: absolute;
   top: max(16px, env(safe-area-inset-top));
   inset-inline-end: 16px;

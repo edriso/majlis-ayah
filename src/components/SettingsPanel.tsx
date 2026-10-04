@@ -5,7 +5,7 @@ import {
   type Prefs,
   type Session,
 } from '@/halaqa/state';
-import { AppearanceFields } from './Appearance';
+import { AppearanceFields, SoundFields } from './Preferences';
 import { HalaqaForm, type ReciterRequest } from './HalaqaForm';
 import { ReciterPicker } from './ReciterPicker';
 import { Sheet } from './Sheet';
@@ -22,14 +22,12 @@ export function SettingsPanel({
   onOpenChange,
   session,
   prefs,
-  desktop,
   dispatch,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   session: Session;
   prefs: Prefs;
-  desktop: boolean;
   dispatch: Dispatch<Action>;
 }) {
   // The reciter list opens in place of the settings, with a way back,
@@ -97,7 +95,16 @@ export function SettingsPanel({
         <AppearanceFields
           prefs={prefs}
           onChange={(p) => dispatch({ type: 'prefs', prefs: p })}
-          withView={desktop}
+        />
+      </section>
+
+      <section className="settings-section" aria-labelledby="settings-sound">
+        <h3 id="settings-sound" className="settings-heading">
+          الصوت
+        </h3>
+        <SoundFields
+          prefs={prefs}
+          onChange={(p) => dispatch({ type: 'prefs', prefs: p })}
         />
       </section>
 

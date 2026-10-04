@@ -7,6 +7,8 @@ class FakeMedia extends EventTarget {
   src = '';
   currentTime = 0;
   readyState = 0;
+  playbackRate = 1;
+  defaultPlaybackRate = 1;
   preload: HTMLMediaElement['preload'] = '';
   ended = false;
   paused = true;
@@ -172,6 +174,30 @@ describe('the player', () => {
     expect(pages).toEqual([551]);
     // No seek back into what was just heard.
     expect(media.currentTime).toBe(60);
+  });
+
+  it('plays a page again from its start, as a repeated listen does', async () => {
+    player.play('listen', [queue[0], queue[0]]);
+    media.load();
+    await flush();
+    media.at(70);
+    expect(media.currentTime).toBe(10);
+    expect(player.getState().played).toBe(60_000);
+  });
+
+  it('plays at the speed it is set to, and stops on time at it', async () => {
+    const done = vi.fn();
+    player.setRate(2);
+    player.play('listen', [queue[0]], { onDone: done });
+    expect(media.playbackRate).toBe(2);
+    expect(media.defaultPlaybackRate).toBe(2);
+    media.load();
+    await flush();
+    media.at(69.8);
+    media.currentTime = 70;
+    // 200 ms of recording at double speed is 100 ms on the clock.
+    await vi.advanceTimersByTimeAsync(100);
+    expect(done).toHaveBeenCalledOnce();
   });
 
   it('notices a pause it did not make', async () => {

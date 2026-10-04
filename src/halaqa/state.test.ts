@@ -238,6 +238,61 @@ describe('the circle', () => {
       expect([reading(s), where(s).page]).toEqual(['p3', 20]);
     });
 
+    it('keeps a turn of two pages whole for everyone', () => {
+      // p1 read pages 20–21; p2 is on page 21 of the same pages.
+      let s = run(
+        { startPage: 20, mode: 'repeat', pagesPerTurn: 2 },
+        { type: 'finishTurn' },
+        { type: 'nextPage' },
+      );
+      expect([reading(s), where(s).page]).toEqual(['p2', 21]);
+      // Someone joins at the end: p2 carries on, on the same page.
+      const members = [...s.session!.config.members, person('p4')];
+      const behind = reduce(s, {
+        type: 'configure',
+        config: { ...s.session!.config, members },
+      });
+      expect([reading(behind), where(behind).page]).toEqual(['p2', 21]);
+      expect(currentPages(behind.session!)).toEqual([20, 21]);
+      // Someone joins at the front: the pages start over, from page 20.
+      s = reduce(s, {
+        type: 'configure',
+        config: {
+          ...s.session!.config,
+          members: [
+            person('p4'),
+            ...ids(s).map((id) =>
+              s.session!.config.members.find((m) => m.id === id)!,
+            ),
+          ],
+        },
+      });
+      expect([reading(s), where(s).page]).toEqual(['p4', 20]);
+      expect(currentPages(s.session!)).toEqual([20, 21]);
+    });
+
+    it('starts over when a turn grows to a page the others have not read', () => {
+      let s = run({ startPage: 20, mode: 'repeat' }, { type: 'finishTurn' });
+      s = reduce(s, {
+        type: 'configure',
+        config: { ...s.session!.config, pagesPerTurn: 2 },
+      });
+      expect([reading(s), where(s).page]).toEqual(['p1', 20]);
+      expect(currentPages(s.session!)).toEqual([20, 21]);
+    });
+
+    it('moves on when the reader in the last seat leaves', () => {
+      let s = run(
+        { startPage: 20, mode: 'repeat' },
+        { type: 'finishTurn' },
+        { type: 'finishTurn' },
+      );
+      expect(reading(s)).toBe('p3');
+      s = reorder(s, ['p1', 'p2']);
+      expect([reading(s), where(s).page]).toEqual(['p1', 21]);
+      expect(s.session!.pagesRead).toBe(1);
+    });
+
     it('changes nothing when only those after the reader are reordered', () => {
       const s = run({ startPage: 20, mode: 'repeat' }, { type: 'finishTurn' });
       const t = reorder(s, ['p1', 'p2', 'p3']);
@@ -299,14 +354,16 @@ describe('a saved halaqa', () => {
 
   it('is repaired, never trusted', () => {
     const s = sanitizeState({
-      prefs: { theme: 'neon', view: 7 },
+      prefs: { theme: 'neon', view: 7, speed: 3, listenRepeat: 0, cue: 'x' },
       config: { readers: 'x', pagesPerTurn: 9, startPage: 9000 },
       session: { turn: -3, anchor: { turn: 5, page: 0 }, config: {} },
     });
     expect(s.prefs).toEqual({
       theme: 'green',
-      view: 'balanced',
       photos: 'show',
+      speed: 1,
+      listenRepeat: 1,
+      cue: 'chime',
     });
     expect(s.config.pagesPerTurn).toBe(1);
     expect(s.config.startPage).toBe(1);

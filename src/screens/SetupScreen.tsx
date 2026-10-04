@@ -12,7 +12,7 @@ import {
   type Prefs,
   type Session,
 } from '@/halaqa/state';
-import { AppearanceFields } from '@/components/Appearance';
+import { AppearanceFields, SoundFields } from '@/components/Preferences';
 import { HalaqaForm, type ReciterRequest } from '@/components/HalaqaForm';
 import { LogoMark } from '@/components/Logo';
 import { ReciterPicker } from '@/components/ReciterPicker';
@@ -50,13 +50,14 @@ export function SetupScreen({
 
   return (
     <main className="setup" id="main">
-      {/* The look of the app, before a halaqa starts: its colour, and
-          whether the reciters' faces are shown, blurred or hidden, which
-          some would settle before the first photo appears. */}
+      {/* How the app looks and sounds, before a halaqa starts: its
+          colour, whether the reciters' faces are shown, blurred or hidden
+          (which some would settle before the first photo appears), and the
+          speed of recitations. */}
       <button
         type="button"
-        className="icon-button setup-appearance"
-        aria-label="المظهر"
+        className="icon-button setup-settings"
+        aria-label="الإعدادات"
         onClick={() => setLooking(true)}
       >
         <Settings size={20} aria-hidden="true" />
@@ -130,10 +131,21 @@ export function SetupScreen({
       <Sheet
         open={looking}
         onOpenChange={setLooking}
-        title="المظهر"
-        description="لون التطبيق، وكيف تظهر صور القرّاء."
+        title="الإعدادات"
+        description="مظهر التطبيق وصوته. تُطبَّق فور اختيارها."
       >
-        <AppearanceFields prefs={prefs} onChange={onPrefs} />
+        <section className="settings-section" aria-labelledby="setup-look">
+          <h3 id="setup-look" className="settings-heading">
+            المظهر
+          </h3>
+          <AppearanceFields prefs={prefs} onChange={onPrefs} />
+        </section>
+        <section className="settings-section" aria-labelledby="setup-sound">
+          <h3 id="setup-sound" className="settings-heading">
+            الصوت
+          </h3>
+          <SoundFields prefs={prefs} onChange={onPrefs} />
+        </section>
       </Sheet>
 
       <Sheet

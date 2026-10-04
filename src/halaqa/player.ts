@@ -49,6 +49,8 @@ export type Media = Pick<
   HTMLMediaElement,
   | 'src'
   | 'currentTime'
+  | 'playbackRate'
+  | 'defaultPlaybackRate'
   | 'readyState'
   | 'ended'
   | 'preload'
@@ -72,6 +74,9 @@ const IDLE: PlayerState = {
     begin before the last one ends, as one recording's data has it), seeking
     back would say the overlap twice. */
 const SEAMLESS_MS = 3000;
+/** How far back an overlap can reach and still be one. Further back is the
+    same page again, as «استمع» repeating it is, which must seek. */
+const OVERLAP_MS = 10_000;
 
 export class Player {
   private media: Media | null = null;
@@ -85,6 +90,9 @@ export class Player {
   private pendingSeek: number | null = null;
   private stopTimer: ReturnType<typeof setTimeout> | undefined;
   private primed = false;
+  private rate = 1;
+  private meta: Meta | undefined;
+  private artwork = true;
 
   /**
    * `create` makes the element, on first use. A player with `session`
@@ -141,7 +149,8 @@ export class Player {
       total,
     });
     if (queue.length === 0) return this.finish();
-    if (this.session) setMediaSession(options.meta, this);
+    this.meta = options.meta;
+    if (this.session) setMediaSession(this.meta, this.artwork, this);
     this.load(first);
   }
 
@@ -180,6 +189,24 @@ export class Player {
     this.load(i, !paused);
   }
 
+  /** Plays at `rate` from now on, this recitation and the next. The
+      browser keeps the voice's pitch. */
+  setRate(rate: number) {
+    this.rate = rate;
+    if (!this.media) return;
+    this.media.defaultPlaybackRate = rate;
+    this.media.playbackRate = rate;
+    this.tick();
+  }
+
+  /** Whether the lock screen may show the reciter's photo; changing it
+      changes what is already showing. */
+  setArtwork(shown: boolean) {
+    this.artwork = shown;
+    if (this.session && this.queue.length)
+      setMediaSession(this.meta, shown, this);
+  }
+
   /** Unlocks the element for sound started later without a tap. Call it
       from a tap; it does nothing once the element has played. A
       recitation the browser held back is the sound this tap was waiting
@@ -211,6 +238,9 @@ export class Player {
     if (this.media) return this.media;
     const media = this.create();
     media.preload = 'auto';
+    // Setting a source resets the rate to the default, so both are set.
+    media.defaultPlaybackRate = this.rate;
+    media.playbackRate = this.rate;
     // Events from the silence `prime()` plays, or from a queue just
     // stopped, find nothing queued and are ignored.
     media.addEventListener('timeupdate', () => this.tick());
@@ -259,6 +289,7 @@ export class Player {
     const segment = this.queue[i];
     this.at = i;
     this.clearTimer();
+    this.set({ played: this.playedBefore(i) });
     const from = segment.from / 1000;
     if (sameFile(media.src, segment.url) && media.readyState >= 1) {
       this.pendingSeek = null;
@@ -312,7 +343,10 @@ export class Player {
     // next ayah.
     this.clearTimer();
     if (this.state.status === 'playing')
-      this.stopTimer = setTimeout(() => this.tick(), segment.to - ms);
+      this.stopTimer = setTimeout(
+        () => this.tick(),
+        (segment.to - ms) / this.rate,
+      );
   }
 
   private advance() {
@@ -320,8 +354,9 @@ export class Player {
     const next = this.queue[this.at + 1];
     this.clearTimer();
     if (!next) return this.finish();
+    const gap = next.from - current.to;
     const seamless =
-      sameFile(next.url, current.url) && next.from - current.to < SEAMLESS_MS;
+      sameFile(next.url, current.url) && gap < SEAMLESS_MS && gap > -OVERLAP_MS;
     if (next.page !== current.page) {
       this.set({ page: next.page });
       this.onPage?.(next.page);
@@ -358,7 +393,11 @@ const sameFile = (src: string, url: string) =>
   src === url || src.endsWith(url.replace(/^https?:/, ''));
 
 /** The lock screen's and the headphones' controls, where there are any. */
-function setMediaSession(meta: Meta | undefined, player: Player) {
+function setMediaSession(
+  meta: Meta | undefined,
+  artwork: boolean,
+  player: Player,
+) {
   if (!meta || typeof navigator === 'undefined' || !navigator.mediaSession)
     return;
   try {
@@ -366,7 +405,7 @@ function setMediaSession(meta: Meta | undefined, player: Player) {
       title: meta.title,
       artist: meta.artist,
       album: 'مجلس نور',
-      artwork: meta.artwork ? [{ src: meta.artwork }] : [],
+      artwork: artwork && meta.artwork ? [{ src: meta.artwork }] : [],
     });
     navigator.mediaSession.setActionHandler('play', () => player.resume());
     navigator.mediaSession.setActionHandler('pause', () => player.pause());
