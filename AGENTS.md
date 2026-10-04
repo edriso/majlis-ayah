@@ -4,23 +4,27 @@ Notes for anyone, human or AI, working on Majlis Noor.
 
 ## What this app is
 
-Majlis Noor (`مجلس نور`) recreates a Quran halaqa in a mosque: one to three
-readers sit in a circle and take turns reading the Madani Mushaf, page by
-page. It is a static web app. There is no server, no database, no accounts
-and no analytics; everything a reader does stays in their browser.
+Majlis Noor (`مجلس نور`) recreates a Quran halaqa in a mosque: one to four
+members sit in a circle and take turns reading the Madani Mushaf, page by
+page. A member is a person in the room, who reads aloud, or a recorded
+reciter (a sheikh), whose recitation of his pages plays on his turn. It is a
+static web app. There is no server, no database, no accounts and no
+analytics; everything a reader does stays in their browser.
 
-The app was called Majlis Ayah (`مجلس آية`) at first. The old name survives
-in exactly two places, both on purpose: the storage key it adopts (see
-below) and the service worker's clean-up of its old caches.
+The app was called Majlis Ayah (`مجلس آية`) at first. In code the old name
+survives in exactly two places, both on purpose: the storage key it adopts
+(see below) and the service worker's clean-up of its old caches.
 
 There are two screens and no router:
 
-- **The start screen** (`SetupScreen`). Where to start (surah, juz or page),
-  how many readers and their names, continue or repeat, pages per turn,
-  manual or reciter-timed turns. A halaqa left open is offered first, as one
-  card.
-- **The reading screen** (`ReadingScreen`). The Mushaf page, the circle, the
-  reading order, and one primary button that passes the turn on.
+- **The start screen** (`SetupScreen`). Where to start (surah, juz or page);
+  who sits in the circle and in what order, people and reciters, each moved
+  up or down with a button; continue or repeat; pages per turn; manual or
+  reciter-timed turns. A halaqa left open is offered first, as one card.
+- **The reading screen** (`ReadingScreen`). The Mushaf page, the circle
+  beside it (which is also the reading order: every seat says what it does
+  next), and one primary button. On a person's turn it passes the turn on;
+  on a reciter's turn it pauses and resumes his recitation.
 
 The brief the app was built from asks for this order of importance on every
 screen, and every decision should protect it: **1. the Quran, 2. the current
@@ -102,7 +106,8 @@ paints the theme before the bundle loads. Both also read the old name's key,
 `majlis-ayah:v1`, when the new one is empty, and the first save removes it:
 the two names share the `edriso.github.io` origin, so a halaqa saved under
 the old one is there to adopt. Renaming the key again needs the same.
-Whatever is read back goes through `sanitizeState()`, which never trusts it.
+Whatever is read back goes through `sanitizeState()`, which never trusts it
+and turns the old shape (`readers`, a list of names) into members.
 
 **Nothing may assume the site's path.** GitHub Pages serves the app under
 `/majlis-noor/`. `vite.config.ts` takes `base` from `VITE_BASE_PATH`, which the
@@ -147,9 +152,10 @@ Built once by scripts, committed, never fetched from an API at run time.
 - **Timings** (`scripts/build-timings.ts`): per-ayah timestamps of whole-surah
   recordings, from Quran.com's `qdc` audio API. For each reciter and page, the
   stretch (or two stretches, where a page holds two surahs) of the surah file
-  that covers it. One table serves both reciter-timed turns (summed into a
-  duration) and listening (the surah file played from one timestamp to the
-  other, see `usePageAudio.ts`).
+  that covers it. One table serves three things: reciter-timed turns
+  (summed into a duration), «استمع» (one page played), and a seated
+  reciter's turn (all its pages played in a row, `recitationOf()`). All
+  playback goes through `src/halaqa/player.ts`; see `src/halaqa/AGENTS.md`.
 - **Page fonts** are fetched at run time from `static.qurancdn.com`, which
   answers with `access-control-allow-origin: *` and a year-long cache. They
   are not in the repository. See `src/mushaf/fonts.ts`.
@@ -178,12 +184,20 @@ Built once by scripts, committed, never fetched from an API at run time.
 
 ## Accessibility
 
-- Every touch target is at least 44 by 44 pixels. Every control has an
+- Every touch target is at least 44 by 44 pixels, with two exceptions WCAG
+  2.5.8 allows: links inside a sentence (the about text), and the view
+  switch in the desktop top bar, 36 tall so the bar stays one line, which
+  appears only on a screen too wide for a phone. Every control has an
   accessible name; `app.test.tsx` fails on any button, input, select or link
   without one, on both screens.
+- The member list says every change aloud (added, moved to seat 2 of 4,
+  taken out) in its own `<output>`, and keeps focus where the hand is: on
+  the moved member's button, in the new reader's name field, on the next
+  row after a removal. Moving is two buttons, never a drag, so it works
+  with one finger, a switch or a keyboard (WCAG 2.5.7).
 - Choices are native radio inputs styled as buttons (`Choice.tsx`), so arrow
   keys and screen readers work with nothing added. Keep new choices on it.
-- Text meets WCAG AA in all three themes. The table at the head of
+- Text meets WCAG AA in all four themes. The table at the head of
   `src/styles/tokens.css` is enforced by `src/styles/contrast.test.ts`, which
   recomputes it from the colours actually declared. Do not fade text with
   `opacity`; use `--muted`, which is chosen to pass.
@@ -197,11 +211,11 @@ Built once by scripts, committed, never fetched from an API at run time.
 
 Keys live in one effect in `ReadingScreen.tsx`.
 
-| Key     | What it does                                           |
-| ------- | ------------------------------------------------------ |
-| `←`     | the primary action: next page in the turn, or «تمّ»    |
-| `→`     | back: previous page in the turn, or the previous reader |
-| `Space` | pause or resume a timed turn, when no button has focus  |
+| Key     | What it does                                                    |
+| ------- | --------------------------------------------------------------- |
+| `←`     | forward: next page in the turn, «تمّ», or skip a reciter's turn |
+| `→`     | back: previous page in the turn, or the previous member         |
+| `Space` | pause or resume a recitation or a timed turn, when no button has focus |
 
 Left is forward because a right-to-left book turns that way. Arrows are used
 rather than letters because a single-letter shortcut must be remappable to
@@ -215,28 +229,49 @@ README.
 
 The reading screen has three bands (`src/styles/reading.css`): phone under
 760px (the page and the turn; the circle opens in a sheet), tablet to 1099px
-(the page and a narrow side column), desktop from 1100px (circle, page, order,
-sized by the chosen view).
+(the page and a narrow side column), desktop from 1100px (the circle and the
+page, sized by the chosen view). There is no third column: the circle is
+the reading order, so a separate list would only repeat it.
+
+On a desktop the page's column is as wide as the page and its two turning
+arrows and no wider, and the grid is centred, so the circle and the page sit
+together in the middle of the screen however wide it is. The views only move
+room between them (`--side`, `--stage-h`).
 
 The Mushaf page is sized by width alone. Everything inside it is in `cqi`, so
 it is a fixed shape, `--page-height` times its width, declared in
 `tokens.css` and itemised in `mushaf.css`. The layout gives it a height to fit
 (`--stage-h`) and the page takes `min(column, stage-h / page-height)`. Change
 anything inside the page and you must update `--page-height`, or the page will
-overflow or float in its frame.
+overflow or float in its frame. The circle is a size container too: its
+centre and seats scale with the circle actually drawn.
 
 The action bar is a size container. Below 560px of its own width (a phone,
 the page column in the Halaqa view, a small desktop) the secondary actions
 drop their visible words and keep them as accessible names, so the main
 button keeps its own. Under 400px of viewport the main button says «تمّ —
-التالي» instead of «تمّ — القارئ التالي». `.reading-quran` has an explicit
-`minmax(0, 1fr)` track so the bar can never push the page wider than the
-screen, which it once did.
+التالي» instead of «تمّ — القارئ التالي», the reciter's button drops his
+photo, and the top line, when it carries a clock, says «ص ٢٤» for «الصفحة
+٢٤». `.reading-quran` has an explicit `minmax(0, 1fr)` track so the bar can
+never push the page wider than the screen, which it once did.
 
-Measured in Chrome over all three views at 320, 390, 900, 1100, 1440 and
-1920 wide, in a timed turn (the widest bar): no horizontal overflow, and the
-main button never under 140px. If you add a control to the bar, measure
-again.
+Measured in Chrome over all three views at 320, 360, 390, 760, 900, 1100,
+1280, 1440, 1920 and 2560 wide, in a timed reader's turn and in a reciter's
+turn (the two widest bars): no horizontal overflow, no seat outside its
+column, and the main button never under 140px with its words whole. If you
+add a control to the bar, measure again.
+
+## Themes
+
+Four, in `src/styles/tokens.css`: burgundy, green and blue are the carpet at
+night; sand is the courtyard by day, a light theme in which the gold deepens
+to bronze so it still passes as text. A theme sets colours and nothing else.
+Stylesheets never write a colour of their own: translucent tints come from
+`--well`, `--hover`, `--page-shadow`, or channels such as
+`rgb(var(--shadow-rgb) / 0.3)` and `rgb(var(--glow-rgb) / 0.45)`, so a new
+rule looks right in all four. Adding a theme means its block in
+`tokens.css`, its entry in `contrast.test.ts`, its colour in `App.tsx`
+(`THEME_COLOR`) and in `index.html` (twice), and its swatch in `sheet.css`.
 
 ## Offline
 
