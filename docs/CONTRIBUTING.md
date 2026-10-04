@@ -38,11 +38,13 @@ npm run build
 | ------------------------------------------ | --------------------------------------------- |
 | who reads which page, continue / repeat    | `src/halaqa/schedule.ts`, `src/halaqa/state.ts` |
 | who sits in the circle, and their order    | `Members` in `src/components/HalaqaForm.tsx`  |
-| what the start screen asks                 | `src/components/SetupScreen.tsx`, `HalaqaForm.tsx` |
-| the reading screen                         | `src/components/ReadingScreen.tsx`            |
+| what the start screen asks                 | `src/screens/SetupScreen.tsx`, `src/components/HalaqaForm.tsx` |
+| the reading screen                         | `src/screens/ReadingScreen.tsx`               |
 | the buttons under the page                 | `src/components/ActionBar.tsx`                |
 | the circle, which is also the order        | `src/components/HalaqaCircle.tsx`             |
 | how a recitation plays                     | `src/halaqa/player.ts`, `useRecitation.ts`    |
+| the reciter list, its samples and paces    | `src/components/ReciterPicker.tsx`, `src/data/reciters.ts` |
+| colour and photos settings                 | `src/components/Appearance.tsx`               |
 | the settings drawer                        | `src/components/SettingsPanel.tsx`            |
 | how a Mushaf page is drawn                 | `src/mushaf/MushafPage.tsx`, `styles/mushaf.css` |
 | the reciters                               | `src/data/reciters.ts`, then `npm run build:timings` |

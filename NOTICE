@@ -42,8 +42,8 @@ stored is the stretch of each recording that covers each page, in
 milliseconds; each file names its recitation and endpoint in its `source`.
 
 The recordings themselves are streamed from https://download.quranicaudio.com
-when a reader listens to a page or a reciter seated in the circle recites
-his turn, and none is stored here.
+when a reader listens to a page, a reciter seated in the circle recites his
+turn, or a reciter is sampled in the list, and none is stored here.
 
 
 The reciters' photographs

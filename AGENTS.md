@@ -67,11 +67,12 @@ and take `--offline` to rebuild from that cache alone.
 
 ```
 src/
-  App.tsx             the shell: which screen, the theme on <html>
+  App.tsx             the shell: which screen, the theme, the photos setting
+  screens/            the two screens: SetupScreen and ReadingScreen
+  components/         their parts: the circle, the forms, sheets, avatars
   data/               the Mushaf index and pages, reciters, timings, Arabic
   halaqa/             the halaqa itself: who reads what (see its AGENTS.md)
   mushaf/             drawing a Mushaf page (see its AGENTS.md)
-  components/         the screens and their parts
   hooks/              small browser hooks: wake lock, media queries
   styles/             tokens, base, and one stylesheet per area
 scripts/              offline tools that build the committed data
@@ -160,10 +161,13 @@ Built once by scripts, committed, never fetched from an API at run time.
   answers with `access-control-allow-origin: *` and a year-long cache. They
   are not in the repository. See `src/mushaf/fonts.ts`.
 - **Reciters** are listed in `src/data/reciters.ts`, ordered from the most
-  deliberate to the swiftest. Adding one: add the entry with its Quran.com
-  `qdc` id, run `npm run build:timings`, and add a photo only if a freely
-  licensed one exists (and its NOTICE entry); otherwise the avatar shows his
-  initial. `timings.test.ts` checks every page of every reciter.
+  deliberate to the swiftest by `secondsPerPage`, his average page, which
+  the list shows and bands (`paceLabel()`: متأنٍّ جدًّا، متأنٍّ، معتدل، سريع).
+  Adding one: add the entry with its Quran.com `qdc` id, run
+  `npm run build:timings`, set `secondsPerPage` to what the test reports, and
+  add a photo only if a freely licensed one exists (and its NOTICE entry);
+  otherwise the avatar shows his initial. `timings.test.ts` checks every page
+  of every reciter, his `secondsPerPage` against his file, and the order.
 
 ## Style
 
@@ -206,16 +210,30 @@ Built once by scripts, committed, never fetched from an API at run time.
 - Whose turn it is lives in an `<output>` that a screen reader announces when
   the turn moves.
 - `prefers-reduced-motion` stills every transition and animation.
+- The reciter list is buttons that say whether they are chosen
+  (`aria-pressed`), not radios: arrowing through a radio group selects as it
+  goes, and choosing closes the list.
+
+## Photos
+
+Reciters' photographs follow `prefs.photos`: shown, blurred, or hidden. Some
+readers would rather not look at faces, or not in a sitting with others.
+The choice is behind the gear on the start screen, before the first photo
+appears, and in the settings. Every face goes through `ReciterFace`
+(`ReciterAvatar.tsx`), which reads the choice from `PhotosContext`; a hidden
+photo is not rendered, so it is never fetched, and the lock screen gets no
+artwork unless photos are shown. Draw a reciter's face anywhere else and it
+must go through `ReciterFace` too.
 
 ## Keyboard
 
-Keys live in one effect in `ReadingScreen.tsx`.
+Keys live in one effect in `src/screens/ReadingScreen.tsx`.
 
 | Key     | What it does                                                    |
 | ------- | --------------------------------------------------------------- |
 | `←`     | forward: next page in the turn, «تمّ», or skip a reciter's turn |
 | `→`     | back: previous page in the turn, or the previous member         |
-| `Space` | pause or resume a recitation or a timed turn, when no button has focus |
+| `Space` | pause or resume whatever runs: a reciter's turn, a timed turn (and «استمع» with it), or «استمع» |
 
 Left is forward because a right-to-left book turns that way. Arrows are used
 rather than letters because a single-letter shortcut must be remappable to

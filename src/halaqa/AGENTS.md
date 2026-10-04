@@ -67,6 +67,13 @@ the turn counter moves to a fresh round, `(round + 1) * members + seat`, and
 is re-anchored at the page being read, so the modulo names the right member
 from here on and the circle goes round in its new order.
 
+In repeat mode **nobody misses the page**. If the change seats anyone ahead
+of the reader who is still to read it (moved up, or newly added), the page
+starts over from the first seat. If everyone ahead has read it, or was
+passed over by an earlier jump, the reader carries on, and the round is
+anchored so those ahead keep their ticks (or their «لم يقرأها»).
+`state.test.ts` has a case for each.
+
 ## A reciter's turn
 
 `useReciterTurn` starts his recitation when the turn comes to him and stops
@@ -98,8 +105,23 @@ button says «استمع إلى …», and that tap plays.
 
 Everything playing carries a key (`turn:…` or `listen:…`). A hook only
 reads a state carrying its own key and only stops its own, so a listen
-cleaning up never silences the reciter who just started. Recordings stream
-from QuranicAudio and are never cached by the service worker.
+cleaning up never silences the reciter who just started, and a listen whose
+timings arrive after its page or turn has moved on is dropped. Recordings
+stream from QuranicAudio and are never cached by the service worker.
+
+**One pause.** On a reader's timed turn the pause stops the clock and the
+«استمع» recitation together, and resuming brings back what it stopped. On a
+reciter's turn it pauses him. Space does the same.
+
+**Samples.** The reciter list plays a reciter's al-Fatiha on a second
+`Player` (`useSample`), only ever started by a tap, and kept off the lock
+screen. It pauses the halaqa's recitation while it plays and stops if that
+recitation starts again: one voice at a time.
+
+A recording's page stretches are played through without a seek when the
+next starts within three seconds of where the last ended, or before it: one
+reciter's data has a page beginning 5.6 seconds before the last one ends,
+and seeking back would repeat it.
 
 A stretch stops on its last word: position updates come about four times a
 second, so a timer set from the current position ends it on time. Pauses the
