@@ -219,10 +219,18 @@ it is a fixed shape, `--page-height` times its width, declared in
 anything inside the page and you must update `--page-height`, or the page will
 overflow or float in its frame.
 
-Measured in Chrome: no horizontal overflow from 320px up, in both manual and
-timed turns. The action bar is the widest thing on a phone; `.reading-quran`
-has an explicit `minmax(0, 1fr)` track so it can never push the page wider
-than the screen, which it once did.
+The action bar is a size container. Below 560px of its own width (a phone,
+the page column in the Halaqa view, a small desktop) the secondary actions
+drop their visible words and keep them as accessible names, so the main
+button keeps its own. Under 400px of viewport the main button says «تمّ —
+التالي» instead of «تمّ — القارئ التالي». `.reading-quran` has an explicit
+`minmax(0, 1fr)` track so the bar can never push the page wider than the
+screen, which it once did.
+
+Measured in Chrome over all three views at 320, 390, 900, 1100, 1440 and
+1920 wide, in a timed turn (the widest bar): no horizontal overflow, and the
+main button never under 140px. If you add a control to the bar, measure
+again.
 
 ## Offline
 
