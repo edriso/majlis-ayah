@@ -279,9 +279,16 @@ export function ReadingScreen({
           ) : (
             <>
               <div className="mushaf-stage">
-                <div className="mushaf-scroll">
+                {/* A tab stop, because in the Quran view the page is taller than
+                    its column and scrolls, and a region a keyboard cannot
+                    reach is text a keyboard cannot read. */}
+                <section
+                  className="mushaf-scroll"
+                  tabIndex={0}
+                  aria-label={`صفحة المصحف ${arabic(page)}`}
+                >
                   <MushafPage page={page} prefetch={prefetch} />
-                </div>
+                </section>
                 <nav className="page-nav" aria-label="تقليب الصفحات">
                   <button
                     type="button"

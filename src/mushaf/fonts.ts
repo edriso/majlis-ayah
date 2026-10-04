@@ -12,6 +12,7 @@ const FONT_URL = (p: number) =>
 export const pageFontFamily = (p: number) => `qpc-v2-p${p}`;
 
 const loading = new Map<number, Promise<void>>();
+const ready = new Set<number>();
 
 /**
  * Loads a page's font and resolves once text can be drawn in it. Safe to call
@@ -31,6 +32,7 @@ export function loadPageFont(p: number): Promise<void> {
     });
     pending = face.load().then((loaded) => {
       document.fonts.add(loaded);
+      ready.add(p);
     });
     pending.catch(() => loading.delete(p));
     loading.set(p, pending);
@@ -38,7 +40,5 @@ export function loadPageFont(p: number): Promise<void> {
   return pending;
 }
 
-export const isPageFontReady = (p: number) =>
-  typeof document !== 'undefined' &&
-  document.fonts?.check?.(`16px ${pageFontFamily(p)}`) === true &&
-  loading.has(p);
+/** Whether a page's font is in, so a prefetched page draws at once. */
+export const isPageFontReady = (p: number) => ready.has(p);

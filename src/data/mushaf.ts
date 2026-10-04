@@ -80,6 +80,10 @@ export const surahTitle = (n: number) => `سورة ${surah(n).name}`;
 const pageModules = import.meta.glob<{ default: Page }>('./pages/*.json');
 
 const cache = new Map<number, Promise<Page>>();
+const loaded = new Map<number, Page>();
+
+/** A page already loaded, to draw without waiting a frame for its promise. */
+export const loadedPage = (p: number) => loaded.get(p);
 
 /**
  * One page, loaded once and kept: a halaqa moves forward a page or two at a
@@ -90,7 +94,10 @@ export function loadPage(p: number): Promise<Page> {
   let pending = cache.get(n);
   if (!pending) {
     const load = pageModules[`./pages/${n}.json`];
-    pending = load().then((m) => m.default);
+    pending = load().then((m) => {
+      loaded.set(n, m.default);
+      return m.default;
+    });
     // A failed load (offline, a deploy replacing the chunk) is forgotten so
     // the next attempt tries again instead of failing from the cache.
     pending.catch(() => cache.delete(n));

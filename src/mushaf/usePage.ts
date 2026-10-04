@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { loadPage, type Page } from '@/data/mushaf';
-import { loadPageFont } from './fonts';
+import { loadedPage, loadPage, type Page } from '@/data/mushaf';
+import { isPageFontReady, loadPageFont } from './fonts';
 
 export type PageState =
   | { status: 'loading' }
@@ -17,7 +17,10 @@ type Loaded = { n: number; page: Page; font: 'glyphs' | 'text' };
  * The pages on either side are fetched as soon as this one is ready, which is
  * what makes «تمّ» feel instant: the next reader's page is already here.
  */
-export function usePage(n: number, prefetch: readonly number[] = []) {
+export function usePage(
+  n: number,
+  prefetch: readonly number[] = [],
+): PageState {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
 
   useEffect(() => {
@@ -50,9 +53,12 @@ export function usePage(n: number, prefetch: readonly number[] = []) {
     }
   }, [loaded, n, key]);
 
-  const state: PageState =
-    loaded && loaded.n === n
-      ? { status: 'ready', page: loaded.page, font: loaded.font }
-      : { status: 'loading' };
-  return state;
+  if (loaded && loaded.n === n)
+    return { status: 'ready', page: loaded.page, font: loaded.font };
+  // A page fetched ahead of time is drawn in the same frame as the turn
+  // that asked for it, rather than after a frame of skeleton.
+  const early = loadedPage(n);
+  if (early && isPageFontReady(n))
+    return { status: 'ready', page: early, font: 'glyphs' };
+  return { status: 'loading' };
 }

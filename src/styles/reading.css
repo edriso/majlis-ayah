@@ -238,7 +238,7 @@
 /* When the bar is narrow (a phone, or the page column in the Halaqa view,
    or a small desktop) the secondary actions give up their words, which they
    keep as names for screen readers, so the main button keeps its own. */
-@container (max-width: 640px) {
+@container (max-width: 560px) {
   .action-secondary {
     width: 48px;
     padding: 0;
