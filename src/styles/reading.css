@@ -144,6 +144,7 @@
 /* ---------- The action bar ---------- */
 
 .action-bar {
+  container-type: inline-size;
   position: sticky;
   bottom: 0;
   z-index: 15;
@@ -232,6 +233,28 @@
   min-width: 3.2em;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
+}
+
+/* When the bar is narrow (a phone, or the page column in the Halaqa view,
+   or a small desktop) the secondary actions give up their words, which they
+   keep as names for screen readers, so the main button keeps its own. */
+@container (max-width: 640px) {
+  .action-secondary {
+    width: 48px;
+    padding: 0;
+  }
+  .action-secondary:has(.action-clock) {
+    width: auto;
+    padding: 0 14px;
+  }
+  .action-secondary-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 .turn-progress {
@@ -349,13 +372,15 @@
 }
 
 .halaqa-seat {
+  --seat-size: 52px;
   position: absolute;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
   width: 112px;
-  transform: translate(-50%, -26px);
+  /* The avatar's centre, not the box's, sits on the ring. */
+  transform: translate(-50%, calc(var(--seat-size) / -2));
   text-align: center;
   line-height: 1.35;
 }
@@ -363,14 +388,15 @@
    where the page number in the middle would otherwise collide with it. */
 .halaqa-seat[data-top] {
   flex-direction: column-reverse;
-  transform: translate(-50%, calc(-100% + 26px));
+  gap: 6px;
+  transform: translate(-50%, calc(-100% + var(--seat-size) / 2));
 }
 .seat-avatar {
   position: relative;
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
+  width: var(--seat-size);
+  height: var(--seat-size);
   border-radius: 999px;
   background: var(--surface-raised);
   box-shadow: 0 0 0 1px var(--control-border);
@@ -630,18 +656,6 @@
     padding-inline: 12px;
     gap: 8px;
   }
-  .action-secondary {
-    padding: 0;
-    width: 48px;
-  }
-  .action-secondary-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
   /* The clock is already in the top bar on a phone; here it would cost the
      main button its words. */
   .action-clock {
@@ -838,22 +852,20 @@
   .reading[data-view='quran'] .halaqa-seat {
     width: 88px;
   }
-  .reading[data-view='quran'] .seat-avatar {
-    width: 42px;
-    height: 42px;
+  .reading[data-view='quran'] .halaqa-seat {
+    --seat-size: 42px;
   }
 
   .reading[data-view='halaqa'] .reading-main {
-    --side-start: minmax(360px, 1.3fr);
-    --side-end: minmax(300px, 1fr);
+    --side-start: minmax(260px, 1.3fr);
+    --side-end: minmax(220px, 1fr);
     --stage-h: calc((100dvh - var(--topbar-h) - 128px) * 0.74);
   }
   .reading[data-view='halaqa'] .reading-circle .halaqa-circle {
     --circle-size: min(440px, 30vw);
   }
-  .reading[data-view='halaqa'] .seat-avatar {
-    width: 64px;
-    height: 64px;
+  .reading[data-view='halaqa'] .halaqa-seat {
+    --seat-size: 64px;
   }
   .reading[data-view='halaqa'] .seat-mark {
     font-size: 26px;

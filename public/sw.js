@@ -58,7 +58,7 @@ const staleWhileRevalidate = async (event) => {
       if (response.ok) cache.put(event.request, response.clone());
       return response;
     })
-    .catch(() => hit);
+    .catch(() => hit ?? Response.error());
   if (hit) {
     event.waitUntil(fresh);
     return hit;
