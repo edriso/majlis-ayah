@@ -15,3 +15,5 @@ if (!window.matchMedia)
       addEventListener: () => {},
       removeEventListener: () => {},
     }) as unknown as MediaQueryList;
+
+window.scrollTo = () => {};

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { arabic, clock, digits, durationWords, pagesCount, readersCount } from './arabic';
+import {
+  arabic,
+  clock,
+  digits,
+  durationWords,
+  pagesCount,
+  readersCount,
+} from './arabic';
 
 describe('numbers', () => {
   it('writes Arabic-Indic digits', () => {

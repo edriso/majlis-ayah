@@ -95,14 +95,26 @@ describe('a halaqa', () => {
 
   it('keeps the page and the reader when the circle changes shape', () => {
     let s = run({ startPage: 10 }, { type: 'finishTurn' });
-    const config = { ...s.session!.config, mode: 'repeat' as const, pagesPerTurn: 2 };
+    const config = {
+      ...s.session!.config,
+      mode: 'repeat' as const,
+      pagesPerTurn: 2,
+    };
     s = reduce(s, { type: 'configure', config });
     expect(where(s)).toEqual({ page: 11, reader: 1 });
     expect(currentPages(s.session!)).toEqual([11, 12]);
     // Two readers now: reader 3 is gone, so a reader beyond the circle
     // falls back to the last seat.
-    s = reduce(s, { type: 'configure', config: { ...config, readers: ['', ''] } });
-    expect(readerOf({ readers: 2, mode: 'repeat', pagesPerTurn: 2 }, s.session!.turn)).toBe(1);
+    s = reduce(s, {
+      type: 'configure',
+      config: { ...config, readers: ['', ''] },
+    });
+    expect(
+      readerOf(
+        { readers: 2, mode: 'repeat', pagesPerTurn: 2 },
+        s.session!.turn,
+      ),
+    ).toBe(1);
   });
 
   it('completes the Mushaf, then starts a new khatma from al-Fatihah', () => {

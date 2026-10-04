@@ -130,7 +130,7 @@ export function ReadingScreen({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
-      const t = e.target as HTMLElement | null;
+      const t = e.target instanceof Element ? e.target : null;
       if (t?.closest('input, select, textarea, [role="dialog"]')) return;
       if (settingsOpen || circleOpen || jumpOpen) return;
       if (e.key === 'ArrowLeft') {
