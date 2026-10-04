@@ -164,7 +164,7 @@ export function SettingsPanel({
         aria-labelledby="settings-about"
       >
         <h3 id="settings-about" className="settings-heading">
-          عن مجلس آية
+          عن مجلس نور
         </h3>
         <p>
           صفحات مصحف المدينة النبوية برواية حفص، طبعة مجمع الملك فهد لطباعة
@@ -178,7 +178,7 @@ export function SettingsPanel({
           </a>
           . صور القرّاء من ويكيميديا كومنز، ومصدر كل صورة وترخيصها في{' '}
           <a
-            href="https://github.com/edriso/majlis-ayah/blob/main/NOTICE"
+            href="https://github.com/edriso/majlis-noor/blob/main/NOTICE"
             target="_blank"
             rel="noreferrer"
           >
@@ -189,7 +189,7 @@ export function SettingsPanel({
         <p>يُحفظ كل شيء على جهازك وحده، ولا يُرسل إلى أحد.</p>
         <p>
           <a
-            href="https://github.com/edriso/majlis-ayah"
+            href="https://github.com/edriso/majlis-noor"
             target="_blank"
             rel="noreferrer"
           >

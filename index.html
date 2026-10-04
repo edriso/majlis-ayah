@@ -16,7 +16,7 @@
     <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="مجلس آية" />
+    <meta name="apple-mobile-web-app-title" content="مجلس نور" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://static.qurancdn.com" crossorigin />
@@ -24,21 +24,21 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Amiri+Quran&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Reem+Kufi:wght@500;600&display=swap"
     />
-    <title>مجلس آية، حلقة قرآن أينما كنتم</title>
+    <title>مجلس نور، حلقة قرآن أينما كنتم</title>
     <meta
       name="description"
       content="حلقة قرآن صغيرة من قارئ إلى ثلاثة، يتناوبون القراءة في مصحف المدينة صفحةً صفحة، كما يجلسون في حلقة المسجد."
     />
-    <meta property="og:title" content="مجلس آية" />
+    <meta property="og:title" content="مجلس نور" />
     <meta property="og:description" content="اقرؤوا القرآن معًا، دورًا بعد دور، في مصحف المدينة." />
     <meta property="og:locale" content="ar_AR" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="%SHARE_CARD%" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="شعار مجلس آية: ثلاثة مقاعد حول دائرة يتوسطها مصحف، على خلفية عنّابية." />
+    <meta property="og:image:alt" content="شعار مجلس نور: ثلاثة مقاعد حول دائرة يتوسطها مصحف، على خلفية عنّابية." />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="مجلس آية" />
+    <meta name="twitter:title" content="مجلس نور" />
     <meta name="twitter:image" content="%SHARE_CARD%" />
     <style>
       /* Painted before the bundle loads, in the theme the reader chose, so a
@@ -51,7 +51,13 @@
     </style>
     <script>
       try {
-        var saved = JSON.parse(localStorage.getItem('majlis-ayah:v1') || 'null');
+        // The key the app keeps its halaqa under, or the one it used as
+        // مجلس آية, which src/halaqa/storage.ts adopts on first load.
+        var saved = JSON.parse(
+          localStorage.getItem('majlis-noor:v1') ||
+            localStorage.getItem('majlis-ayah:v1') ||
+            'null'
+        );
         var theme = saved && saved.prefs && saved.prefs.theme;
         var colors = { burgundy: '#2a0f14', green: '#0c2019', blue: '#0d1729' };
         if (colors[theme]) {
@@ -62,9 +68,9 @@
     </script>
   </head>
   <body>
-    <div id="root"><div class="boot" role="status">مجلس آية</div></div>
+    <div id="root"><div class="boot" role="status">مجلس نور</div></div>
     <noscript>
-      <p style="color:#f3ead8;text-align:center;font-family:system-ui;padding:24px">يحتاج مجلس آية إلى تفعيل جافاسكربت.</p>
+      <p style="color:#f3ead8;text-align:center;font-family:system-ui;padding:24px">يحتاج مجلس نور إلى تفعيل جافاسكربت.</p>
     </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>

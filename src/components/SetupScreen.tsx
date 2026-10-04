@@ -44,7 +44,7 @@ export function SetupScreen({
       <header className="setup-intro">
         <LogoMark size={64} />
         <h1 className="setup-title">
-          <span className="setup-title-ar">مجلس آية</span>
+          <span className="setup-title-ar">مجلس نور</span>
         </h1>
         <p className="setup-tagline">حلقة قرآن، أينما كنتم.</p>
       </header>

@@ -1,4 +1,4 @@
-/* Keeps Majlis Ayah usable with a weak or absent connection, which is what a
+/* Keeps Majlis Noor usable with a weak or absent connection, which is what a
    mosque often has.
 
    - The page itself is network-first, so a deploy is picked up on the next
@@ -12,9 +12,15 @@
 
    Bump VERSION to drop every cache this worker made. */
 
-const VERSION = 'v2';
-const SHELL = `majlis-ayah-shell-${VERSION}`;
-const ASSETS = `majlis-ayah-assets-${VERSION}`;
+const VERSION = 'v3';
+const SHELL = `majlis-noor-shell-${VERSION}`;
+const ASSETS = `majlis-noor-assets-${VERSION}`;
+
+/* Caches this worker made under the app's first name, مجلس آية, which
+   share this origin and would otherwise stay on the device for good. */
+const STALE = (key) =>
+  key.startsWith('majlis-ayah-') ||
+  (key.startsWith('majlis-noor-') && !key.endsWith(VERSION));
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -30,11 +36,7 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(
-          keys
-            .filter((k) => k.startsWith('majlis-ayah-') && !k.endsWith(VERSION))
-            .map((k) => caches.delete(k)),
-        ),
+        Promise.all(keys.filter(STALE).map((k) => caches.delete(k))),
       )
       .then(() => self.clients.claim()),
   );

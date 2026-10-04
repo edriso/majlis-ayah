@@ -18,7 +18,7 @@ describe('the start screen', () => {
   it('names the app once, as the page heading', () => {
     render(<App />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
-      'مجلس آية',
+      'مجلس نور',
     );
   });
 

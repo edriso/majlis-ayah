@@ -17,7 +17,7 @@ import { join } from 'node:path';
 const chrome =
   process.env.CHROME ??
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const work = mkdtempSync(join(tmpdir(), 'majlis-ayah-assets-'));
+const work = mkdtempSync(join(tmpdir(), 'majlis-noor-assets-'));
 const mark = readFileSync('public/favicon.svg', 'utf8')
   .replace(/<rect[^>]*\/>/, '')
   .replace('<svg ', '<svg width="100%" height="100%" ');
@@ -82,7 +82,7 @@ shoot(
   630,
   `<div style="display:grid;justify-items:center;gap:18px;color:#d9b469;text-align:center">
      <div style="width:150px;height:150px">${mark}</div>
-     <div style="font:600 112px/1.1 'Reem Kufi',sans-serif">مجلس آية</div>
+     <div style="font:600 112px/1.1 'Reem Kufi',sans-serif">مجلس نور</div>
      <div style="font:500 38px/1.5 'IBM Plex Sans Arabic',sans-serif;color:#f4ecdc">اقرؤوا القرآن معًا، دورًا بعد دور.</div>
    </div>`,
 );

@@ -1,4 +1,4 @@
-# Working on Majlis Ayah
+# Working on Majlis Noor
 
 This is the on-ramp. It assumes you know React and have never seen this
 repository, and it does not assume you read Arabic. [AGENTS.md](../AGENTS.md)

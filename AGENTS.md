@@ -1,13 +1,17 @@
 # AGENTS.md
 
-Notes for anyone, human or AI, working on Majlis Ayah.
+Notes for anyone, human or AI, working on Majlis Noor.
 
 ## What this app is
 
-Majlis Ayah (`مجلس آية`) recreates a Quran halaqa in a mosque: one to three
+Majlis Noor (`مجلس نور`) recreates a Quran halaqa in a mosque: one to three
 readers sit in a circle and take turns reading the Madani Mushaf, page by
 page. It is a static web app. There is no server, no database, no accounts
 and no analytics; everything a reader does stays in their browser.
+
+The app was called Majlis Ayah (`مجلس آية`) at first. The old name survives
+in exactly two places, both on purpose: the storage key it adopts (see
+below) and the service worker's clean-up of its old caches.
 
 There are two screens and no router:
 
@@ -92,14 +96,16 @@ the print is; see `src/mushaf/AGENTS.md`.
 **Do not send user data anywhere.** The halaqa (names, page, settings) lives
 in `localStorage` under one key and nowhere else.
 
-**The storage key is a contract.** It is `majlis-ayah:v1`, read by
+**The storage key is a contract.** It is `majlis-noor:v1`, read by
 `src/halaqa/storage.ts` and again by the inline script in `index.html` that
-paints the theme before the bundle loads. Renaming it strands every saved
-halaqa unless the first read adopts the old key. Whatever is read back goes
-through `sanitizeState()`, which never trusts it.
+paints the theme before the bundle loads. Both also read the old name's key,
+`majlis-ayah:v1`, when the new one is empty, and the first save removes it:
+the two names share the `edriso.github.io` origin, so a halaqa saved under
+the old one is there to adopt. Renaming the key again needs the same.
+Whatever is read back goes through `sanitizeState()`, which never trusts it.
 
 **Nothing may assume the site's path.** GitHub Pages serves the app under
-`/majlis-ayah/`. `vite.config.ts` takes `base` from `VITE_BASE_PATH`, which the
+`/majlis-noor/`. `vite.config.ts` takes `base` from `VITE_BASE_PATH`, which the
 workflow takes from `actions/configure-pages`. So:
 
 - In `index.html`, every path goes through `%BASE_URL%`. A hand-written
@@ -236,4 +242,5 @@ again.
 
 `public/sw.js` is a hand-written service worker, registered only in
 production: the page network-first, hashed assets and page fonts cache-first,
-recitations never cached. Bump its `VERSION` to drop every cache it made.
+recitations never cached. Bump its `VERSION` to drop every cache it made; it
+also drops the caches it made under the app's first name.

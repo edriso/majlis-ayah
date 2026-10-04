@@ -38,7 +38,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <span className={compact ? 'brand brand-compact' : 'brand'}>
       <LogoMark size={compact ? 30 : 40} />
-      <span className="brand-name">مجلس آية</span>
+      <span className="brand-name">مجلس نور</span>
     </span>
   );
 }

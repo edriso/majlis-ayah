@@ -22,7 +22,7 @@ What is stored is the position of every word on its page and line, the code
 of its glyph in that page's font, and its readable text. The text is the
 Quran and must not be altered: src/data/mushaf.test.ts checks that all 6,236
 ayat are present once each and in order. Credit: Quran.com and the King Fahd
-Complex, named in the app under «عن مجلس آية».
+Complex, named in the app under «عن مجلس نور».
 
 
 The page fonts, which are not redistributed
@@ -84,7 +84,7 @@ initial instead.
       International, https://creativecommons.org/licenses/by-sa/4.0/
       This crop is an adaptation and is under the same licence.
 
-In the app, «عن مجلس آية» in the settings links to this file.
+In the app, «عن مجلس نور» in the settings links to this file.
 
 
 The interface fonts, which are not redistributed
