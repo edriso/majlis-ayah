@@ -134,7 +134,7 @@
 }
 .quiet-button:hover {
   color: var(--fg);
-  background: rgb(255 255 255 / 0.05);
+  background: var(--hover);
 }
 .page-nav-number {
   font-variant-numeric: tabular-nums;
@@ -172,7 +172,7 @@
   border-radius: 999px;
   background: var(--gold);
   color: var(--on-gold);
-  box-shadow: 0 10px 30px rgb(217 180 105 / 0.18);
+  box-shadow: 0 10px 30px rgb(var(--glow-rgb) / 0.18);
   transition:
     background-color 160ms var(--ease),
     transform 160ms var(--ease);
@@ -322,7 +322,7 @@
   color: var(--gold);
   font-weight: 600;
   white-space: nowrap;
-  box-shadow: 0 12px 30px rgb(0 0 0 / 0.3);
+  box-shadow: 0 12px 30px rgb(var(--shadow-rgb) / 0.3);
   transform: translateX(-50%);
   animation: toast 3.2s var(--ease) both;
 }
@@ -377,7 +377,7 @@
   stroke-width: 1;
 }
 .halaqa-ring-inner {
-  fill: rgb(0 0 0 / 0.14);
+  fill: var(--well);
   stroke: var(--line);
   stroke-width: 1;
   stroke-dasharray: 2 4;
@@ -391,7 +391,7 @@
   stroke: var(--gold);
   stroke-width: 2.4;
   stroke-linecap: round;
-  filter: drop-shadow(0 0 4px rgb(217 180 105 / 0.6));
+  filter: drop-shadow(0 0 4px rgb(var(--glow-rgb) / 0.6));
 }
 
 .halaqa-center {
@@ -527,7 +527,7 @@
   box-shadow:
     0 0 0 3px var(--bg),
     0 0 0 4.5px var(--gold),
-    0 0 28px rgb(217 180 105 / 0.45);
+    0 0 28px rgb(var(--glow-rgb) / 0.45);
   transform: scale(1.08);
 }
 .halaqa-seat[data-active] .seat-mark {

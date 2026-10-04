@@ -10,6 +10,7 @@ export const THEME_COLOR: Record<Theme, string> = {
   burgundy: '#2a0f14',
   green: '#0c2019',
   blue: '#0d1729',
+  sand: '#f3eadb',
 };
 
 /**

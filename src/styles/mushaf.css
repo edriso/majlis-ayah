@@ -30,10 +30,7 @@
     ),
     var(--paper);
   border-radius: 6px;
-  box-shadow:
-    0 1px 0 rgb(255 255 255 / 0.6) inset,
-    0 2px 6px rgb(0 0 0 / 0.18),
-    0 22px 60px rgb(0 0 0 / 0.38);
+  box-shadow: var(--page-shadow);
   transition: width 420ms var(--ease);
 }
 /* The inner sheet carries the padding, in cqi, because the page itself is

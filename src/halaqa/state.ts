@@ -20,7 +20,7 @@ import {
 } from './schedule';
 
 export type TurnChange = 'manual' | 'reciter';
-export type Theme = 'burgundy' | 'green' | 'blue';
+export type Theme = 'burgundy' | 'green' | 'blue' | 'sand';
 export type View = 'quran' | 'balanced' | 'halaqa';
 
 /** Four seats: three readers and a reciter, or any mix. More would crowd
@@ -292,7 +292,7 @@ export function reduce(state: State, action: Action): State {
   }
 }
 
-const themes: Theme[] = ['burgundy', 'green', 'blue'];
+const themes: Theme[] = ['burgundy', 'green', 'blue', 'sand'];
 const views: View[] = ['quran', 'balanced', 'halaqa'];
 
 const intIn = (v: unknown, min: number, max: number, fallback: number) =>

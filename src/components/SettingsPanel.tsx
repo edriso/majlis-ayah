@@ -17,6 +17,7 @@ const THEMES: { value: Theme; label: string }[] = [
   { value: 'burgundy', label: 'عنّابي' },
   { value: 'green', label: 'أخضر' },
   { value: 'blue', label: 'أزرق' },
+  { value: 'sand', label: 'رملي' },
 ];
 
 /**

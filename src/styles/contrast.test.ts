@@ -30,6 +30,7 @@ const themes = {
   burgundy: block(":root[data-theme='burgundy']"),
   green: block(":root[data-theme='green']"),
   blue: block(":root[data-theme='blue']"),
+  sand: block(":root[data-theme='sand']"),
 };
 
 const luminance = (hex: string) => {
@@ -56,6 +57,8 @@ describe.each(Object.entries(themes))('%s', (_, theme) => {
     ['gold', 'surface', 4.5],
     ['gold', 'surface-raised', 4.5],
     ['danger', 'surface', 4.5],
+    ['on-gold', 'gold', 4.5],
+    ['on-gold', 'gold-strong', 4.5],
     ['control-border', 'bg', 3],
     ['control-border', 'surface', 3],
   ])('--%s on --%s', (ink, ground, min) => {
@@ -66,7 +69,6 @@ describe.each(Object.entries(themes))('%s', (_, theme) => {
 });
 
 it.each([
-  ['on-gold', 'gold'],
   ['ink', 'paper'],
   ['ink-soft', 'paper'],
 ])('--%s on --%s', (ink, ground) => {

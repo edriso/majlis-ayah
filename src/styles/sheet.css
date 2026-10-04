@@ -6,7 +6,7 @@
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: rgb(0 0 0 / 0.5);
+  background: rgb(var(--shadow-rgb) / 0.5);
   backdrop-filter: blur(2px);
   transition: opacity 260ms var(--ease);
 }
@@ -26,7 +26,7 @@
   background: var(--surface);
   color: var(--fg);
   border-inline-start: 1px solid var(--line);
-  box-shadow: 24px 0 60px rgb(0 0 0 / 0.35);
+  box-shadow: 24px 0 60px rgb(var(--shadow-rgb) / 0.35);
   transition: transform 300ms var(--ease);
   outline: none;
 }
@@ -108,7 +108,7 @@
   width: 14px;
   height: 14px;
   border-radius: 999px;
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.4);
+  box-shadow: 0 0 0 1px var(--control-border);
 }
 .swatch[data-swatch='burgundy'] {
   background: #6b1f2c;
@@ -118,6 +118,9 @@
 }
 .swatch[data-swatch='blue'] {
   background: #233f73;
+}
+.swatch[data-swatch='sand'] {
+  background: #eadcc0;
 }
 
 .sheet-halaqa {
@@ -134,7 +137,7 @@
     border-inline-start: 0;
     border-top: 1px solid var(--line);
     border-radius: 22px 22px 0 0;
-    box-shadow: 0 -20px 60px rgb(0 0 0 / 0.4);
+    box-shadow: 0 -20px 60px rgb(var(--shadow-rgb) / 0.4);
   }
   .sheet::before {
     content: '';

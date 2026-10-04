@@ -1,15 +1,17 @@
-/* Colour, type and rhythm. Three themes, each a mosque carpet at night:
-   burgundy, green and blue grounds under the same warm gold and the same
-   ivory page. Only the ground changes between them, so every pairing below
-   that involves gold or the page holds in all three.
+/* Colour, type and rhythm. Four themes. Three are a mosque carpet at night:
+   burgundy, green and blue grounds under the same warm gold. The fourth,
+   sand, is the courtyard by day, for a bright room or a sunny window: a
+   pale ground, dark ink, and the gold deepened to bronze so it still reads
+   as text. The Mushaf page is the same ivory in all four.
 
-   Contrast, measured as WCAG ratios, worst case across the three themes
+   Contrast, measured as WCAG ratios, worst case across the four themes
    (src/styles/contrast.test.ts recomputes them and fails under the minimum):
 
      --fg on --bg, --surface                    12.0     needs 4.5
-     --muted on --bg, --surface, --raised        7.0     needs 4.5
-     --gold on --bg, --surface, --raised         6.2     needs 4.5
-     --on-gold on --gold                         8.3     needs 4.5
+     --muted on --bg, --surface, --raised        6.0     needs 4.5
+     --gold on --bg, --surface, --raised         5.1     needs 4.5
+     --on-gold on --gold, --gold-strong          6.2     needs 4.5
+     --danger on --surface                       6.1     needs 4.5
      --control-border on --bg, --surface         3.4     needs 3 (1.4.11)
      --ink on --paper                           16.6     needs 4.5
      --ink-soft on --paper                       7.6     needs 4.5
@@ -40,6 +42,16 @@
   --fg: #f4ecdc;
   --danger: #f1a08f;
 
+  /* Tints the three night themes share; sand sets its own. */
+  --glow-rgb: 217 180 105;
+  --shadow-rgb: 0 0 0;
+  --well: rgb(0 0 0 / 0.13);
+  --hover: rgb(255 255 255 / 0.05);
+  --lamp: rgb(255 222 160 / 0.09);
+  --page-shadow:
+    0 1px 0 rgb(255 255 255 / 0.6) inset, 0 2px 6px rgb(0 0 0 / 0.18),
+    0 22px 60px rgb(0 0 0 / 0.38);
+
   --radius: 14px;
   --radius-small: 10px;
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -48,10 +60,12 @@
   --page-height: 1.697;
 }
 
-/* The grounds. The carpet pattern over them is in base.css and is the same
-   faint gold on all three. */
+/* The grounds. Translucent tints are written as channels (`--shadow-rgb`)
+   so one rule can draw a shadow, a glow or a well in any theme. The carpet
+   pattern over the ground is in base.css. */
 :root,
 :root[data-theme='burgundy'] {
+  color-scheme: dark;
   --bg: #2a0f14;
   --bg-deep: #1f0a0e;
   --surface: #381820;
@@ -77,4 +91,29 @@
   --line: rgb(244 236 220 / 0.12);
   --control-border: #6c7f9c;
   --muted: #b8c1d2;
+}
+:root[data-theme='sand'] {
+  color-scheme: light;
+  --bg: #f3eadb;
+  --bg-deep: #e8dcc4;
+  --surface: #fbf6ec;
+  --surface-raised: #efe4cf;
+  --line: rgb(90 62 24 / 0.16);
+  --control-border: #917a5c;
+  --muted: #63513d;
+  --fg: #2a1f14;
+  --danger: #a3392a;
+  --gold: #7c5714;
+  --gold-strong: #6a4910;
+  --on-gold: #fffaf0;
+  --gold-soft: rgb(124 87 20 / 0.1);
+  --gold-line: rgb(124 87 20 / 0.32);
+  --glow-rgb: 124 87 20;
+  --shadow-rgb: 90 62 24;
+  --well: rgb(124 87 20 / 0.06);
+  --hover: rgb(90 62 24 / 0.07);
+  --lamp: rgb(255 255 250 / 0.75);
+  --page-shadow:
+    0 0 0 1px rgb(124 87 20 / 0.22), 0 2px 6px rgb(90 62 24 / 0.12),
+    0 18px 44px rgb(90 62 24 / 0.16);
 }

@@ -46,6 +46,8 @@
       html { background: #2a0f14; }
       html[data-theme='green'] { background: #0c2019; }
       html[data-theme='blue'] { background: #0d1729; }
+      html[data-theme='sand'] { background: #f3eadb; }
+      html[data-theme='sand'] .boot { color: #7c5714; }
       body { margin: 0; }
       .boot { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; color: #d9b469; font: 600 28px/1.5 'Reem Kufi', system-ui, sans-serif; }
     </style>
@@ -59,7 +61,12 @@
             'null'
         );
         var theme = saved && saved.prefs && saved.prefs.theme;
-        var colors = { burgundy: '#2a0f14', green: '#0c2019', blue: '#0d1729' };
+        var colors = {
+          burgundy: '#2a0f14',
+          green: '#0c2019',
+          blue: '#0d1729',
+          sand: '#f3eadb'
+        };
         if (colors[theme]) {
           document.documentElement.dataset.theme = theme;
           document.querySelector('meta[name="theme-color"]').setAttribute('content', colors[theme]);
