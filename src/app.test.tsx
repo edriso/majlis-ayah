@@ -118,9 +118,10 @@ describe('accessibility', () => {
     expect(unnamed()).toEqual([]);
   });
 
-  it('keeps one main landmark and a way past the header', async () => {
+  it('keeps one main landmark, one h1 and a way past the header', async () => {
     await start();
     expect(screen.getAllByRole('main')).toHaveLength(1);
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(screen.getByRole('link', { name: 'تخطَّ إلى الصفحة' })).toBeTruthy();
   });
 });

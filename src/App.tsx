@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ReadingScreen } from './components/ReadingScreen';
 import { SetupScreen } from './components/SetupScreen';
 import { useHalaqa } from './halaqa/useHalaqa';
-import type { Theme } from './halaqa/state';
+import { currentPage, isComplete, type Theme } from './halaqa/state';
 
 /** The colour the browser's own chrome takes on a phone, per theme. Kept in
     step with `--bg` in styles/tokens.css and with index.html. */
@@ -45,9 +45,18 @@ export function App() {
       />
     );
 
+  // A new halaqa set up beside an unfinished one starts where that one
+  // stopped: the readers may change from one sitting to the next, the place
+  // in the Mushaf rarely does.
+  const { session } = state;
+  const initial =
+    session && !isComplete(session)
+      ? { ...state.config, startPage: currentPage(session) }
+      : state.config;
+
   return (
     <SetupScreen
-      initial={state.config}
+      initial={initial}
       saved={state.session}
       onStart={(config) => open(() => dispatch({ type: 'start', config }))}
       onResume={() => open(() => {})}

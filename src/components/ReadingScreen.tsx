@@ -252,6 +252,9 @@ export function ReadingScreen({
       </output>
 
       <main className="reading-main">
+        {/* The brand in the bar says which app this is; the heading says
+            where in it a screen reader has landed. */}
+        <h1 className="visually-hidden">مجلس آية: الحلقة</h1>
         <aside className="reading-side reading-circle" aria-label="الحلقة">
           {circle}
           <p className="progress-note">

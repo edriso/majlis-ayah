@@ -3,14 +3,16 @@
 
    - The page itself is network-first, so a deploy is picked up on the next
      visit, falling back to the cached copy offline.
-   - Built assets (hashed file names) and the Mushaf page fonts never change
-     under the same address, so they are cache-first.
+   - Built assets (hashed file names) and the font files never change under
+     the same address, so they are cache-first.
+   - Google's font stylesheet can change what it points to, so it is served
+     from the cache and refreshed behind it.
    - Recitation audio is never cached here: it is large, streamed in ranges,
      and only listened to, never needed to read.
 
    Bump VERSION to drop every cache this worker made. */
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = `majlis-ayah-shell-${VERSION}`;
 const ASSETS = `majlis-ayah-assets-${VERSION}`;
 
@@ -48,6 +50,22 @@ const cacheFirst = async (request) => {
   return response;
 };
 
+const staleWhileRevalidate = async (event) => {
+  const cache = await caches.open(ASSETS);
+  const hit = await cache.match(event.request);
+  const fresh = fetch(event.request)
+    .then((response) => {
+      if (response.ok) cache.put(event.request, response.clone());
+      return response;
+    })
+    .catch(() => hit);
+  if (hit) {
+    event.waitUntil(fresh);
+    return hit;
+  }
+  return fresh;
+};
+
 const networkFirst = async (request) => {
   const cache = await caches.open(SHELL);
   try {
@@ -73,10 +91,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   const sameOrigin = url.origin === self.location.origin;
+  if (url.hostname === 'fonts.googleapis.com') {
+    event.respondWith(staleWhileRevalidate(event));
+    return;
+  }
   const isFont =
     url.hostname === 'static.qurancdn.com' ||
-    url.hostname === 'fonts.gstatic.com' ||
-    url.hostname === 'fonts.googleapis.com';
+    url.hostname === 'fonts.gstatic.com';
   if (
     isFont ||
     (sameOrigin &&
