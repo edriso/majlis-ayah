@@ -117,6 +117,16 @@ export function ReadingScreen({
     session.pageInTurn > 0 ||
     (turn > 0 && !isBeforeStart(plan, anchor, turn - 1));
 
+  /* A new page starts at its first line. On a phone the page is taller than
+     the screen and the reader finished at the foot of the last one; in the
+     Quran view on a desktop the page scrolls in its own column. */
+  useEffect(() => {
+    const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const behavior = smooth ? 'smooth' : 'auto';
+    document.querySelector('.mushaf-scroll')?.scrollTo({ top: 0, behavior });
+    if (window.scrollY > 0) window.scrollTo({ top: 0, behavior });
+  }, [page]);
+
   useEffect(() => {
     if (!toast) return;
     const id = setTimeout(() => setToast(null), 3200);

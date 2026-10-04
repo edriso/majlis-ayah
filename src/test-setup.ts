@@ -16,4 +16,7 @@ if (!window.matchMedia)
       removeEventListener: () => {},
     }) as unknown as MediaQueryList;
 
+// jsdom draws nothing, so it implements no scrolling either.
 window.scrollTo = () => {};
+if (!('scrollTo' in Element.prototype))
+  Object.assign(Element.prototype, { scrollTo: () => {} });

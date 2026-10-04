@@ -290,6 +290,15 @@
   margin: 0 auto;
   transition: width 420ms var(--ease);
 }
+/* The seat at the top of a circle of three carries its name above it, out
+   of the box; this is the room for it. */
+.halaqa-circle[data-readers='3'] {
+  margin-top: 44px;
+}
+/* A lone reader sits at the foot of the circle, with the name below it. */
+.halaqa-circle[data-readers='1'] {
+  margin-bottom: 56px;
+}
 .halaqa-ring {
   position: absolute;
   inset: 0;
@@ -557,6 +566,8 @@
 
 .khatm {
   display: grid;
+  align-self: center;
+  align-content: center;
   justify-items: center;
   gap: 10px;
   width: min(520px, 100%);
@@ -589,6 +600,7 @@
 }
 .khatm-actions {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
@@ -679,6 +691,7 @@
   }
   .reading-main {
     grid-template-columns: minmax(0, 1fr) 260px;
+    grid-template-rows: auto 1fr;
     max-width: 1100px;
     padding-inline: 24px;
   }
@@ -688,8 +701,6 @@
     gap: 8px;
     grid-column: 2;
     grid-row: 1;
-    position: sticky;
-    top: calc(var(--topbar-h) + 20px);
   }
   .reading-circle .halaqa-circle {
     --circle-size: 240px;
