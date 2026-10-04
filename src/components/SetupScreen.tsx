@@ -2,14 +2,16 @@ import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { arabic } from '@/data/arabic';
 import { surahOfPage } from '@/data/mushaf';
+import { readerOf } from '@/halaqa/schedule';
 import {
   currentPage,
   isComplete,
-  readerName,
+  memberName,
+  planOf,
   type Config,
   type Session,
 } from '@/halaqa/state';
-import { HalaqaForm } from './HalaqaForm';
+import { HalaqaForm, type ReciterRequest } from './HalaqaForm';
 import { LogoMark } from './Logo';
 import { ReciterPicker } from './ReciterPicker';
 import { Sheet } from './Sheet';
@@ -37,7 +39,7 @@ export function SetupScreen({
 }) {
   const [config, setConfig] = useState<Config>(initial);
   const [showForm, setShowForm] = useState(!saved);
-  const [picking, setPicking] = useState(false);
+  const [picking, setPicking] = useState<ReciterRequest | null>(null);
 
   return (
     <main className="setup" id="main">
@@ -86,7 +88,7 @@ export function SetupScreen({
           <HalaqaForm
             config={config}
             onChange={setConfig}
-            onPickReciter={() => setPicking(true)}
+            onPickReciter={setPicking}
           />
           <button
             type="submit"
@@ -108,18 +110,22 @@ export function SetupScreen({
       )}
 
       <Sheet
-        open={picking}
-        onOpenChange={setPicking}
-        title="اختر القارئ"
-        description="قارئ تُقاس بتلاوته مدة الدور، ويُستمع إليه في الصفحة."
+        open={picking !== null}
+        onOpenChange={(open) => {
+          if (!open) setPicking(null);
+        }}
+        title={picking?.title ?? ''}
+        description={picking?.description}
       >
-        <ReciterPicker
-          value={config.reciter}
-          onChange={(reciter) => {
-            setConfig({ ...config, reciter });
-            setPicking(false);
-          }}
-        />
+        {picking ? (
+          <ReciterPicker
+            value={picking.value}
+            onChange={(reciter) => {
+              picking.apply(reciter);
+              setPicking(null);
+            }}
+          />
+        ) : null}
       </Sheet>
     </main>
   );
@@ -128,7 +134,7 @@ export function SetupScreen({
 function ResumeSummary({ session }: { session: Session }) {
   const page = currentPage(session);
   const { config } = session;
-  const reader = session.turn % config.readers.length;
+  const member = config.members[readerOf(planOf(config), session.turn)];
   return (
     <p className="resume-summary">
       <span className="resume-page">
@@ -137,9 +143,11 @@ function ResumeSummary({ session }: { session: Session }) {
       <span className="resume-reader">
         {isComplete(session)
           ? 'خُتم المصحف'
-          : config.readers.length > 1
-            ? `الدور على: ${readerName(config, reader)}`
-            : 'قراءة فردية'}
+          : config.members.length > 1
+            ? `الدور على: ${memberName(member)}`
+            : member.kind === 'reciter'
+              ? `استماع إلى ${memberName(member)}`
+              : 'قراءة فردية'}
       </span>
     </p>
   );

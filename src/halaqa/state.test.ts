@@ -5,12 +5,14 @@ import {
   defaultConfig,
   initialState,
   isComplete,
-  readerName,
+  memberName,
+  newMember,
   reduce,
   sanitizeState,
   turnPhrase,
   type Action,
   type Config,
+  type Member,
   type State,
 } from './state';
 import { readerOf } from './schedule';
@@ -24,11 +26,17 @@ const run = (config: Partial<Config>, ...actions: Action[]) =>
     }),
   );
 
+const person = (id: string, name = ''): Member => ({
+  id,
+  kind: 'person',
+  name,
+});
+
 const where = (s: State) => {
   const session = s.session!;
   return {
     page: currentPage(session),
-    reader: session.turn % session.config.readers.length,
+    reader: session.turn % session.config.members.length,
   };
 };
 
@@ -107,7 +115,7 @@ describe('a halaqa', () => {
     // falls back to the last seat.
     s = reduce(s, {
       type: 'configure',
-      config: { ...config, readers: ['', ''] },
+      config: { ...config, members: config.members.slice(0, 2) },
     });
     expect(
       readerOf(
@@ -118,7 +126,10 @@ describe('a halaqa', () => {
   });
 
   it('completes the Mushaf, then starts a new khatma from al-Fatihah', () => {
-    let s = run({ startPage: 604, readers: [''] }, { type: 'finishTurn' });
+    let s = run(
+      { startPage: 604, members: [person('p1')] },
+      { type: 'finishTurn' },
+    );
     expect(isComplete(s.session!)).toBe(true);
     expect(reduce(s, { type: 'finishTurn' })).toBe(s);
     s = reduce(s, { type: 'restartMushaf' });
@@ -130,17 +141,91 @@ describe('a halaqa', () => {
   });
 });
 
-describe('reader names', () => {
-  const config = { ...defaultConfig, readers: ['', 'عمر', ''] };
-  it('defaults the first seat to the person holding the device', () => {
-    expect(readerName(config, 0)).toBe('أنت');
-    expect(turnPhrase(config, 0)).toBe('دورك');
+describe('the circle', () => {
+  it('keeps the reader when the circle is reordered', () => {
+    // Omar (p2) is reading page 11; the circle is turned round.
+    let s = run({ startPage: 10 }, { type: 'finishTurn' });
+    const [a, b, c] = s.session!.config.members;
+    s = reduce(s, {
+      type: 'configure',
+      config: { ...s.session!.config, members: [c, b, a] },
+    });
+    expect(where(s).page).toBe(11);
+    const session = s.session!;
+    expect(session.config.members[where(s).reader].id).toBe('p2');
+    // And the circle goes on in its new order: c, b, a, c …
+    s = reduce(s, { type: 'finishTurn' });
+    expect(s.session!.config.members[where(s).reader].id).toBe('p1');
+    expect(where(s).page).toBe(12);
+  });
+
+  it('gives the turn to whoever takes the seat of a reader who leaves', () => {
+    let s = run({ startPage: 10 }, { type: 'finishTurn' });
+    const [a, , c] = s.session!.config.members;
+    s = reduce(s, {
+      type: 'configure',
+      config: { ...s.session!.config, members: [a, c] },
+    });
+    expect(s.session!.config.members[where(s).reader].id).toBe('p3');
+    expect(where(s).page).toBe(11);
+  });
+
+  it('changes nothing about the turn when only a name changes', () => {
+    const s = run({ startPage: 10 }, { type: 'finishTurn' });
+    const members = s.session!.config.members.map((m) =>
+      m.id === 'p2' ? { ...m, name: 'عمر' } : m,
+    );
+    const t = reduce(s, {
+      type: 'configure',
+      config: { ...s.session!.config, members },
+    });
+    expect(t.session!.turn).toBe(s.session!.turn);
+    expect(t.session!.anchor).toEqual(s.session!.anchor);
+  });
+
+  it('seats a reciter like anyone else', () => {
+    const sheikh: Member = { id: 'r1', kind: 'reciter', reciter: 'minshawi' };
+    let s = run({
+      startPage: 24,
+      mode: 'repeat',
+      members: [sheikh, person('p1')],
+    });
+    expect(turnPhrase(s.session!.config.members[0])).toBe('يتلو المنشاوي');
+    s = reduce(s, { type: 'finishTurn' });
+    expect(where(s)).toEqual({ page: 24, reader: 1 });
+    s = reduce(s, { type: 'finishTurn' });
+    expect(where(s)).toEqual({ page: 25, reader: 0 });
+  });
+
+  it('adds members with the first free id, up to four', () => {
+    const members: Member[] = [person('p1'), person('p3')];
+    expect(newMember(members, 'person')!.id).toBe('p2');
+    expect(newMember(members, 'reciter', 'alafasy')).toEqual({
+      id: 'r1',
+      kind: 'reciter',
+      reciter: 'alafasy',
+    });
+    const full = [...members, person('p2'), person('p4')];
+    expect(newMember(full, 'person')).toBeNull();
+  });
+});
+
+describe('member names', () => {
+  it('defaults the first reader to the person holding the device', () => {
+    expect(memberName(person('p1'))).toBe('أنت');
+    expect(turnPhrase(person('p1'))).toBe('دورك');
   });
   it('uses a given name', () => {
-    expect(turnPhrase(config, 1)).toBe('دور عمر');
+    expect(turnPhrase(person('p2', 'عمر'))).toBe('دور عمر');
+    expect(turnPhrase(person('p1', 'عمر'))).toBe('دور عمر');
   });
-  it('numbers the rest', () => {
-    expect(readerName(config, 2)).toBe('القارئ الثالث');
+  it('numbers the rest by who they are, not where they sit', () => {
+    expect(memberName(person('p3'))).toBe('القارئ الثالث');
+  });
+  it('names a reciter by the name he is known by', () => {
+    expect(memberName({ id: 'r1', kind: 'reciter', reciter: 'husary' })).toBe(
+      'الحصري',
+    );
   });
 });
 
@@ -161,6 +246,53 @@ describe('a saved halaqa', () => {
     expect(s.config.startPage).toBe(1);
     expect(s.session!.turn).toBe(0);
     expect(s.session!.anchor).toEqual({ turn: 0, page: 1 });
+  });
+
+  it('turns a halaqa saved before reciters could sit into people', () => {
+    const s = sanitizeState({
+      config: { readers: ['', 'عمر', ''], mode: 'repeat' },
+      session: {
+        config: { readers: ['أحمد', ''] },
+        turn: 3,
+        anchor: { turn: 0, page: 50 },
+      },
+    });
+    expect(s.config.members).toEqual([
+      person('p1'),
+      person('p2', 'عمر'),
+      person('p3'),
+    ]);
+    expect(s.config.members.map(memberName)).toEqual([
+      'أنت',
+      'عمر',
+      'القارئ الثالث',
+    ]);
+    expect(s.session!.config.members).toEqual([
+      person('p1', 'أحمد'),
+      person('p2'),
+    ]);
+    expect(where(s)).toEqual({ page: 53, reader: 1 });
+  });
+
+  it('repairs members it cannot trust', () => {
+    const s = sanitizeState({
+      config: {
+        members: [
+          { id: 'p1', kind: 'person', name: 7 },
+          { id: 'p1', kind: 'person', name: 'عمر' },
+          { id: 'r9', kind: 'reciter', reciter: 'nobody' },
+          null,
+          { kind: 'person' },
+          { kind: 'person' },
+        ],
+      },
+    });
+    expect(s.config.members).toEqual([
+      person('p1'),
+      person('p2', 'عمر'),
+      { id: 'r1', kind: 'reciter', reciter: 'husary' },
+      person('p3'),
+    ]);
   });
 
   it('starts fresh from nothing', () => {

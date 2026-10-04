@@ -6,7 +6,6 @@ import {
   pagesOf,
   readerOf,
   round,
-  upcoming,
   type Plan,
 } from './schedule';
 
@@ -52,21 +51,6 @@ describe('continue mode', () => {
   it('cannot step back before page 1', () => {
     expect(isBeforeStart(plan, { turn: 1, page: 1 }, 0)).toBe(true);
     expect(isBeforeStart(plan, { turn: 1, page: 2 }, 0)).toBe(false);
-  });
-
-  it('shows the turn just read, the turn being read and the next two', () => {
-    const seats = upcoming(plan, start, 1);
-    expect(seats.map((s) => [s.turn, s.reader, s.pages])).toEqual([
-      [0, 0, [20]],
-      [1, 1, [21]],
-      [2, 2, [22]],
-      [3, 0, [23]],
-    ]);
-  });
-
-  it('does not show a turn from before a jump as though it was read', () => {
-    const jumped = { turn: 4, page: 100 };
-    expect(upcoming(plan, jumped, 4).map((s) => s.turn)).toEqual([4, 5, 6]);
   });
 });
 

@@ -19,10 +19,3 @@ export function pagesShort(pages: readonly number[]) {
   if (pages.length === 1) return `ص ${arabic(pages[0])}`;
   return `ص ${arabic(pages[0])}–${arabic(pages[pages.length - 1])}`;
 }
-
-/** The initial a seat shows: a named reader's first letter, or the seat's
-    number for an unnamed one, since «أ» for «أنت» says nothing. */
-export function seatMark(name: string, i: number) {
-  const first = name.trim().at(0);
-  return first ?? arabic(i + 1);
-}

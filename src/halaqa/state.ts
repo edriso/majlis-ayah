@@ -5,7 +5,7 @@
 
 import { ordinal } from '@/data/arabic';
 import { clampPage, PAGE_COUNT } from '@/data/mushaf';
-import { defaultReciter, reciters } from '@/data/reciters';
+import { defaultReciter, reciterById, reciters } from '@/data/reciters';
 import {
   anchorAt,
   endsRound,
@@ -23,13 +23,26 @@ export type TurnChange = 'manual' | 'reciter';
 export type Theme = 'burgundy' | 'green' | 'blue';
 export type View = 'quran' | 'balanced' | 'halaqa';
 
-export const MAX_READERS = 3;
+/** Four seats: three readers and a reciter, or any mix. More would crowd
+    the circle on a phone, and a bigger gathering has its own teacher. */
+export const MAX_MEMBERS = 4;
 export const MAX_PAGES_PER_TURN = 3;
 
+/** Someone in the room who reads aloud. An empty name means the default
+    one, so a halaqa can start without anyone typing anything. */
+export type Person = { id: string; kind: 'person'; name: string };
+
+/** A recorded reciter given a seat. On his turn his recitation of the turn's
+    pages plays while the others follow on the page, and the turn passes on
+    when it ends, as a sheikh's would. */
+export type ReciterMember = { id: string; kind: 'reciter'; reciter: string };
+
+export type Member = Person | ReciterMember;
+export type MemberKind = Member['kind'];
+
 export type Config = {
-  /** One entry per reader, in the order they sit. An empty name means the
-      default one, so a halaqa can start without anyone typing anything. */
-  readers: string[];
+  /** Everyone in the circle, in the order they read. */
+  members: Member[];
   mode: Mode;
   pagesPerTurn: number;
   turnChange: TurnChange;
@@ -57,7 +70,11 @@ export type State = {
 };
 
 export const defaultConfig: Config = {
-  readers: ['', '', ''],
+  members: [
+    { id: 'p1', kind: 'person', name: '' },
+    { id: 'p2', kind: 'person', name: '' },
+    { id: 'p3', kind: 'person', name: '' },
+  ],
   mode: 'continue',
   pagesPerTurn: 1,
   turnChange: 'manual',
@@ -74,23 +91,52 @@ export const initialState: State = {
 };
 
 export const planOf = (c: Config): Plan => ({
-  readers: c.readers.length,
-  mode: c.readers.length === 1 ? 'continue' : c.mode,
+  readers: c.members.length,
+  mode: c.members.length === 1 ? 'continue' : c.mode,
   pagesPerTurn: c.pagesPerTurn,
 });
 
-/** The name a reader is shown by. The first seat is the person holding the
-    device, «أنت», unless someone named it. */
-export function readerName(c: Config, i: number) {
-  const name = c.readers[i]?.trim();
+/* Members are told apart by an id that stays with them when the circle is
+   reordered: `p1`…`p4` for people, `r1`…`r4` for reciters. A person's
+   default name comes from that number, not from where they sit, so moving
+   «القارئ الثاني» up the list moves that reader, visibly, rather than
+   renaming two seats. `p1` is the person holding the device: «أنت». */
+
+const numberOf = (m: Member) => Number(m.id.slice(1));
+
+/** The name a member is shown by. */
+export function memberName(m: Member) {
+  if (m.kind === 'reciter') return reciterById(m.reciter).short;
+  const name = m.name.trim();
   if (name) return name;
-  return i === 0 ? 'أنت' : `القارئ ${ordinal(i + 1)}`;
+  const n = numberOf(m);
+  return n === 1 ? 'أنت' : `القارئ ${ordinal(n)}`;
 }
 
-/** «دورك» for the unnamed first seat, «دور أحمد» for everyone else. */
-export function turnPhrase(c: Config, i: number) {
-  if (i === 0 && !c.readers[0]?.trim()) return 'دورك';
-  return `دور ${readerName(c, i)}`;
+/** Whether a member is the unnamed «أنت», who is spoken to, not of. */
+const isYou = (m: Member) =>
+  m.kind === 'person' && m.id === 'p1' && !m.name.trim();
+
+/** «دورك», «دور أحمد», or «يتلو الحصري» for a reciter's turn. */
+export function turnPhrase(m: Member) {
+  if (m.kind === 'reciter') return `يتلو ${memberName(m)}`;
+  return isYou(m) ? 'دورك' : `دور ${memberName(m)}`;
+}
+
+/** A new member of the given kind, with the first id not taken. Returns
+    null when the circle is full. */
+export function newMember(
+  members: readonly Member[],
+  kind: MemberKind,
+  reciter: string = defaultReciter,
+): Member | null {
+  if (members.length >= MAX_MEMBERS) return null;
+  const prefix = kind === 'person' ? 'p' : 'r';
+  const taken = new Set(members.map((m) => m.id));
+  let n = 1;
+  while (taken.has(`${prefix}${n}`)) n++;
+  const id = `${prefix}${n}`;
+  return kind === 'person' ? { id, kind, name: '' } : { id, kind, reciter };
 }
 
 export const currentPages = (s: Session) =>
@@ -213,15 +259,23 @@ export function reduce(state: State, action: Action): State {
     case 'configure': {
       const config = sanitizeConfig(action.config);
       const next = planOf(config);
+      /* Whoever is reading keeps the turn wherever they now sit: the circle
+         may have been reordered, or someone added or removed. If it was
+         they who left, the turn goes to whoever took their seat. */
+      const seat = readerOf(plan, s.turn);
+      const moved = config.members.findIndex(
+        (m) => m.id === s.config.members[seat]?.id,
+      );
+      const reader = moved !== -1 ? moved : Math.min(seat, next.readers - 1);
       const samePlan =
         next.readers === plan.readers &&
         next.mode === plan.mode &&
-        next.pagesPerTurn === plan.pagesPerTurn;
+        next.pagesPerTurn === plan.pagesPerTurn &&
+        reader === seat;
       if (samePlan) return { ...state, config, session: { ...s, config } };
       /* The shape of the circle changed. Carry on from the page being read,
-         with the same reader if they are still seated, so nobody loses
-         their place; the turns before this one are history either way. */
-      const reader = Math.min(readerOf(plan, s.turn), next.readers - 1);
+         with the same reader, so nobody loses their place; the turns before
+         this one are history either way. */
       const turn = (roundOf(plan, s.turn) + 1) * next.readers + reader;
       return {
         ...state,
@@ -246,23 +300,62 @@ const intIn = (v: unknown, min: number, max: number, fallback: number) =>
     ? v
     : fallback;
 
+const knownReciter = (id: unknown) =>
+  reciters.some((r) => r.id === id) ? (id as string) : defaultReciter;
+
+const idPattern: Record<MemberKind, RegExp> = {
+  person: new RegExp(`^p[1-${MAX_MEMBERS}]$`),
+  reciter: new RegExp(`^r[1-${MAX_MEMBERS}]$`),
+};
+
+/** The members of a stored configuration, repaired: each a known kind with a
+    unique id of its kind, a person's name a string of at most 40
+    characters, a reciter one that exists. A configuration saved before
+    reciters could sit in the circle has `readers`, a list of names, and
+    becomes people in the same order under the same default names. */
+function sanitizeMembers(c: Record<string, unknown>): Member[] {
+  const raw: unknown[] = Array.isArray(c.members)
+    ? c.members
+    : Array.isArray(c.readers)
+      ? c.readers.map((name) => ({ kind: 'person', name }))
+      : defaultConfig.members;
+  const members: Member[] = [];
+  for (const item of raw) {
+    if (members.length === MAX_MEMBERS) break;
+    if (!item || typeof item !== 'object') continue;
+    const m = item as Record<string, unknown>;
+    const kind: MemberKind = m.kind === 'reciter' ? 'reciter' : 'person';
+    const own =
+      typeof m.id === 'string' &&
+      idPattern[kind].test(m.id) &&
+      !members.some((other) => other.id === m.id);
+    const id = own ? (m.id as string) : newMember(members, kind)!.id;
+    members.push(
+      kind === 'person'
+        ? {
+            id,
+            kind,
+            name: typeof m.name === 'string' ? m.name.slice(0, 40) : '',
+          }
+        : { id, kind, reciter: knownReciter(m.reciter) },
+    );
+  }
+  return members.length ? members : [defaultConfig.members[0]];
+}
+
 /** Whatever was stored, made into a valid configuration. A stored value is
     data from an older version or a hand-edited store, never trusted. */
 export function sanitizeConfig(raw: unknown): Config {
-  const c = (raw ?? {}) as Partial<Config>;
-  const readers = Array.isArray(c.readers)
-    ? c.readers
-        .slice(0, MAX_READERS)
-        .map((n) => (typeof n === 'string' ? n.slice(0, 40) : ''))
-    : defaultConfig.readers;
+  const c = (raw && typeof raw === 'object' ? raw : {}) as Record<
+    string,
+    unknown
+  >;
   return {
-    readers: readers.length ? readers : [''],
+    members: sanitizeMembers(c),
     mode: c.mode === 'repeat' ? 'repeat' : 'continue',
     pagesPerTurn: intIn(c.pagesPerTurn, 1, MAX_PAGES_PER_TURN, 1),
     turnChange: c.turnChange === 'reciter' ? 'reciter' : 'manual',
-    reciter: reciters.some((r) => r.id === c.reciter)
-      ? (c.reciter as string)
-      : defaultReciter,
+    reciter: knownReciter(c.reciter),
     startPage: intIn(c.startPage, 1, PAGE_COUNT, 1),
   };
 }

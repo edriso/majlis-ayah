@@ -8,6 +8,15 @@ import { PAGE_COUNT } from './mushaf';
 /** [surah, fromMs, toMs]: a stretch of the reciter's recording of that surah. */
 export type Stretch = [surah: number, from: number, to: number];
 
+/** A stretch of a recording to play, and the page it recites. */
+export type Segment = {
+  url: string;
+  /** Milliseconds into the recording. */
+  from: number;
+  to: number;
+  page: number;
+};
+
 export type Timings = {
   /** The surah file's address, with `{n}` for the surah number. */
   audio: string;
@@ -46,3 +55,16 @@ export const averagePage = (t: Timings) =>
 
 export const surahAudioUrl = (t: Timings, surah: number) =>
   t.audio.replace('{n}', String(surah));
+
+/** A reciter's recitation of some pages, as the stretches to play in order:
+    one per page, or two where a page holds the end of one surah and the
+    start of the next. */
+export const recitationOf = (t: Timings, pages: readonly number[]): Segment[] =>
+  pages.flatMap((page) =>
+    pageStretches(t, page).map(([surah, from, to]) => ({
+      url: surahAudioUrl(t, surah),
+      from,
+      to,
+      page,
+    })),
+  );

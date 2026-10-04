@@ -27,9 +27,8 @@ export function Choice<T extends string | number>({
   options: Option<T>[];
   value: T;
   onChange: (value: T) => void;
-  /** `pills` for short labels in a row, `cards` for options with a hint,
-      `seats` for the round reader-count picker. */
-  variant?: 'pills' | 'cards' | 'seats';
+  /** `pills` for short labels in a row, `cards` for options with a hint. */
+  variant?: 'pills' | 'cards';
 }) {
   const name = useId();
   return (

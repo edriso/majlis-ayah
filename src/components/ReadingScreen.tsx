@@ -1,54 +1,62 @@
-import {
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  Headphones,
-  Pause,
-  Play,
-  Settings,
-  Square,
-  Undo2,
-  Users,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Settings, Users } from 'lucide-react';
 import { useEffect, useState, type Dispatch } from 'react';
-import { arabic, clock, durationWords, pagesCount } from '@/data/arabic';
+import { arabic, clock, pagesCount } from '@/data/arabic';
 import { PAGE_COUNT, surahOfPage } from '@/data/mushaf';
-import { loadTimings, pagesDuration, type Timings } from '@/data/timings';
+import { reciterById } from '@/data/reciters';
+import { pagesDuration } from '@/data/timings';
 import { pagesLabel } from '@/halaqa/labels';
 import { endsRound, isBeforeStart, pagesOf, readerOf } from '@/halaqa/schedule';
 import {
   currentPage,
   currentPages,
   isComplete,
+  memberName,
   planOf,
-  readerName,
   turnPhrase,
   type Action,
   type Prefs,
   type Session,
   type View,
 } from '@/halaqa/state';
-import { usePageAudio } from '@/halaqa/usePageAudio';
+import {
+  player,
+  useListen,
+  useReciterTurn,
+  useTimings,
+} from '@/halaqa/useRecitation';
 import { useTurnClock } from '@/halaqa/useTurnClock';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { MushafPage } from '@/mushaf/MushafPage';
+import {
+  ActionBar,
+  BackButton,
+  DoneButton,
+  ListenButton,
+  RecitationButton,
+  SkipButton,
+  TimerButton,
+} from './ActionBar';
 import { Brand } from './Logo';
 import { Choice } from './Choice';
 import { HalaqaCircle } from './HalaqaCircle';
-import { ReadingOrder } from './ReadingOrder';
 import { SettingsPanel } from './SettingsPanel';
 import { Sheet } from './Sheet';
 import { StartPicker } from './StartPicker';
 
 /**
- * The halaqa itself: the page being read, the circle, who reads next, and
- * one button that passes the turn on.
+ * The halaqa itself: the page being read, the circle, and one button that
+ * passes the turn on.
  *
- * On a wide screen the three sit side by side and the reader chooses which
- * one gets the room (المصحف، متوازن، الحلقة). On a phone the page takes the
- * screen, the line above it says whose turn it is, and the circle is one tap
- * away. Nothing navigates: switching view only resizes what is already here.
+ * On a wide screen the circle sits beside the page and the reader chooses
+ * which of the two gets the room (المصحف، متوازن، الحلقة). The circle is
+ * also the reading order: every seat says what it does next. On a phone the
+ * page takes the screen, the line above it says whose turn it is, and the
+ * circle is one tap away. Nothing navigates: switching view only resizes
+ * what is already here.
+ *
+ * On a reciter's turn his recitation plays, the page follows it, and the
+ * turn passes on when it ends; the primary button pauses it instead.
  */
 export function ReadingScreen({
   session,
@@ -64,11 +72,15 @@ export function ReadingScreen({
   const pages = currentPages(session);
   const page = currentPage(session);
   const complete = isComplete(session);
-  const reader = readerOf(plan, turn);
-  const nextReader = readerOf(plan, turn + 1);
+  const member = config.members[readerOf(plan, turn)];
+  const nextMember = config.members[readerOf(plan, turn + 1)];
   const nextPages = pagesOf(plan, anchor, turn + 1);
   const lastPageOfTurn = session.pageInTurn >= pages.length - 1;
+  const reciting = !complete && member.kind === 'reciter';
   const desktop = useMediaQuery('(min-width: 1100px)');
+  // A turn, and the pages it covers: a new key is a new turn to time or
+  // to recite from its start.
+  const turnKey = `${turn}:${anchor.turn}:${anchor.page}:${plan.mode}:${plan.pagesPerTurn}`;
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [circleOpen, setCircleOpen] = useState(false);
@@ -77,9 +89,10 @@ export function ReadingScreen({
 
   useWakeLock(!complete);
 
-  const timings = useTimings(config.reciter, config.turnChange === 'reciter');
-  const duration = timings && !complete ? pagesDuration(timings, pages) : null;
-  const timed = config.turnChange === 'reciter' && !complete;
+  const { timings, retry } = useTimings([
+    config.reciter,
+    ...config.members.flatMap((m) => (m.kind === 'reciter' ? [m.reciter] : [])),
+  ]);
 
   const finishTurn = () => {
     if (complete) return;
@@ -91,28 +104,56 @@ export function ReadingScreen({
     dispatch({ type: 'finishTurn' });
   };
 
+  // A reader's turn may be timed by the halaqa's reciter; a reciter's turn
+  // is as long as his recitation, and needs no clock.
+  const timed = config.turnChange === 'reciter' && !complete && !reciting;
+  const paceTimings = timings[config.reciter];
+  const duration =
+    timed && paceTimings ? pagesDuration(paceTimings, pages) : null;
   const clockState = useTurnClock({
     enabled: timed,
     duration,
-    turnKey: `${turn}:${anchor.turn}:${anchor.page}:${config.pagesPerTurn}:${config.reciter}`,
+    turnKey: `${turnKey}:${config.reciter}`,
     onExpire: finishTurn,
   });
-  const left = timed ? clockState.left : null;
-  const progress =
-    timed && clockState.left !== null && clockState.total
-      ? clockState.left / clockState.total
-      : null;
 
-  const audio = usePageAudio(config.reciter, page);
+  const recitation = useReciterTurn({
+    reciter: member.kind === 'reciter' && !complete ? member.reciter : null,
+    turnKey,
+    pages,
+    page,
+    timings,
+    onPage: (p) => dispatch({ type: 'goToPage', page: p }),
+    onDone: finishTurn,
+    onRetry: retry,
+  });
+  const listen = useListen({
+    reciter: config.reciter,
+    turnKey,
+    page,
+    timings,
+  });
 
-  const primary = () => {
+  const left = reciting ? recitation.left : timed ? clockState.left : null;
+  const total = reciting ? recitation.total : timed ? clockState.total : null;
+  const progress = left !== null && total ? left / total : null;
+
+  // Every press is a chance to unlock sound for a reciter whose turn comes
+  // round later without one (see player.ts).
+  const press = (action: () => void) => () => {
+    player.prime();
+    action();
+  };
+  const primary = press(() => {
     if (!lastPageOfTurn) dispatch({ type: 'nextPage' });
     else finishTurn();
-  };
-  const back = () => {
+  });
+  const skip = press(finishTurn);
+  const toggleRecitation = press(recitation.toggle);
+  const back = press(() => {
     if (session.pageInTurn > 0) dispatch({ type: 'previousPage' });
     else dispatch({ type: 'previousTurn' });
-  };
+  });
   const canGoBack =
     session.pageInTurn > 0 ||
     (turn > 0 && !isBeforeStart(plan, anchor, turn - 1));
@@ -142,16 +183,22 @@ export function ReadingScreen({
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
       const t = e.target instanceof Element ? e.target : null;
       if (t?.closest('input, select, textarea, [role="dialog"]')) return;
-      if (settingsOpen || circleOpen || jumpOpen) return;
+      if (settingsOpen || circleOpen || jumpOpen || complete) return;
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        primary();
+        if (reciting) skip();
+        else primary();
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         if (canGoBack) back();
-      } else if (e.key === ' ' && timed && !t?.closest('button, a')) {
-        e.preventDefault();
-        clockState.toggle();
+      } else if (e.key === ' ' && !t?.closest('button, a')) {
+        if (reciting) {
+          e.preventDefault();
+          toggleRecitation();
+        } else if (timed) {
+          e.preventDefault();
+          clockState.toggle();
+        }
       }
     };
     window.addEventListener('keydown', onKey);
@@ -162,10 +209,17 @@ export function ReadingScreen({
     (p) => p >= 1 && p <= PAGE_COUNT,
   );
 
+  const reciter =
+    member.kind === 'reciter' ? reciterById(member.reciter) : null;
+  const nextName = memberName(nextMember);
   const announcement = complete
     ? 'خُتم المصحف. تقبّل الله منكم.'
-    : `${turnPhrase(config, reader)}، ${pagesLabel(pages)}${
-        pages.length > 1 ? `، تقرأ الآن الصفحة ${arabic(page)}` : ''
+    : `${turnPhrase(member)}، ${pagesLabel(pages)}${
+        pages.length > 1 ? `، الآن الصفحة ${arabic(page)}` : ''
+      }${
+        reciter && recitation.status === 'blocked'
+          ? `. اضغط «استمع إلى ${reciter.short}» لتبدأ تلاوته.`
+          : ''
       }`;
 
   const circle = (
@@ -176,17 +230,10 @@ export function ReadingScreen({
       turn={turn}
       page={page}
       progress={progress}
+      sounding={reciting && recitation.status === 'playing'}
     />
   );
-  const order = (
-    <ReadingOrder
-      config={config}
-      plan={plan}
-      anchor={anchor}
-      turn={turn}
-      left={left}
-    />
-  );
+  const sitting = <Sitting page={page} pagesRead={session.pagesRead} />;
 
   return (
     <div className="reading" data-view={prefs.view}>
@@ -199,17 +246,24 @@ export function ReadingScreen({
           type="button"
           className="topbar-status"
           onClick={() => setJumpOpen(true)}
-          aria-label={`الانتقال إلى صفحة. الآن: ${complete ? 'خُتم المصحف' : `${turnPhrase(config, reader)}، الصفحة ${arabic(page)}`}`}
+          aria-label={`الانتقال إلى صفحة. الآن: ${complete ? 'خُتم المصحف' : `${turnPhrase(member)}، الصفحة ${arabic(page)}`}`}
         >
           {complete ? (
             'خُتم المصحف'
           ) : (
             <>
-              <strong>{turnPhrase(config, reader)}</strong>
-              <span> · الصفحة {arabic(page)}</span>
-              {left !== null ? (
-                <span className="topbar-clock"> · {clock(left)}</span>
-              ) : null}
+              <strong>{turnPhrase(member)}</strong>
+              {left === null ? (
+                <span> · الصفحة {arabic(page)}</span>
+              ) : (
+                // With a clock beside it, a narrow phone has room only
+                // for «ص ٢٤».
+                <>
+                  <span className="label-long"> · الصفحة {arabic(page)}</span>
+                  <span className="label-short"> · ص {arabic(page)}</span>
+                  <span className="topbar-clock"> · {clock(left)}</span>
+                </>
+              )}
             </>
           )}
         </button>
@@ -230,7 +284,7 @@ export function ReadingScreen({
             <button
               type="button"
               className="icon-button circle-toggle"
-              aria-label="الحلقة وترتيب القراءة"
+              aria-label="الحلقة"
               onClick={() => setCircleOpen(true)}
             >
               <Users size={20} aria-hidden="true" />
@@ -255,13 +309,9 @@ export function ReadingScreen({
         {/* The brand in the bar says which app this is; the heading says
             where in it a screen reader has landed. */}
         <h1 className="visually-hidden">مجلس نور: الحلقة</h1>
-        <aside className="reading-side reading-circle" aria-label="الحلقة">
+        <aside className="reading-side" aria-label="الحلقة">
           {circle}
-          <p className="progress-note">
-            {session.pagesRead
-              ? `قرأتم ${pagesCount(session.pagesRead)} في هذا المجلس`
-              : 'بداية المجلس'}
-          </p>
+          {sitting}
         </aside>
 
         <section
@@ -277,205 +327,127 @@ export function ReadingScreen({
               pagesRead={session.pagesRead}
             />
           ) : (
-            <>
-              <div className="mushaf-stage">
-                {/* A tab stop, because in the Quran view the page is taller than
-                    its column and scrolls, and a region a keyboard cannot
-                    reach is text a keyboard cannot read. */}
-                <section
-                  className="mushaf-scroll"
-                  tabIndex={0}
-                  aria-label={`صفحة المصحف ${arabic(page)}`}
-                >
-                  <MushafPage page={page} prefetch={prefetch} />
-                </section>
-                <nav className="page-nav" aria-label="تقليب الصفحات">
-                  <button
-                    type="button"
-                    className="quiet-button page-turn"
-                    onClick={() => dispatch({ type: 'previousPage' })}
-                    aria-disabled={page <= 1}
-                    aria-label="الصفحة السابقة"
-                  >
-                    <ChevronRight size={20} aria-hidden="true" />
-                    <span className="page-turn-label" aria-hidden="true">
-                      السابقة
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="quiet-button page-nav-number"
-                    onClick={() => setJumpOpen(true)}
-                    aria-label={`الصفحة ${arabic(page)} من ${arabic(PAGE_COUNT)}، انتقل إلى صفحة`}
-                  >
-                    {arabic(page)} / {arabic(PAGE_COUNT)}
-                  </button>
-                  <button
-                    type="button"
-                    className="quiet-button page-turn"
-                    onClick={() => dispatch({ type: 'nextPage' })}
-                    aria-disabled={page >= PAGE_COUNT}
-                    aria-label="الصفحة التالية"
-                  >
-                    <span className="page-turn-label" aria-hidden="true">
-                      التالية
-                    </span>
-                    <ChevronLeft size={20} aria-hidden="true" />
-                  </button>
-                </nav>
-              </div>
-            </>
-          )}
-
-          {!complete && (
-            <div className="action-bar">
-              {toast ? (
-                <p key={toast.id} className="toast" aria-hidden="true">
-                  {toast.text}
-                </p>
-              ) : null}
-              {progress !== null ? (
-                <div className="turn-progress" aria-hidden="true">
-                  <span style={{ transform: `scaleX(${progress})` }} />
-                </div>
-              ) : null}
-              <button
-                type="button"
-                className="action-secondary"
-                onClick={back}
-                aria-disabled={!canGoBack}
-                aria-keyshortcuts="ArrowRight"
-                title="رجوع (→)"
+            <div className="mushaf-stage">
+              {/* A tab stop, because in the Quran view the page is taller
+                  than its column and scrolls, and a region a keyboard cannot
+                  reach is text a keyboard cannot read. */}
+              <section
+                className="mushaf-scroll"
+                tabIndex={0}
+                aria-label={`صفحة المصحف ${arabic(page)}`}
               >
-                <Undo2 size={20} aria-hidden="true" />
-                <span className="action-secondary-label">
-                  {session.pageInTurn > 0 ? 'الصفحة السابقة' : 'القارئ السابق'}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="action-primary"
-                onClick={primary}
-                aria-keyshortcuts="ArrowLeft"
-                title="(←)"
-              >
-                <span className="action-primary-main">
-                  {!lastPageOfTurn ? (
-                    `الصفحة التالية (${arabic(session.pageInTurn + 2)} من ${arabic(pages.length)})`
-                  ) : plan.readers > 1 ? (
-                    <>
-                      <span className="label-long">تمّ — القارئ التالي</span>
-                      <span className="label-short" aria-hidden="true">
-                        تمّ — التالي
-                      </span>
-                    </>
-                  ) : (
-                    'تمّ — متابعة'
-                  )}
-                  <ArrowLeft size={20} aria-hidden="true" />
-                </span>
-                {lastPageOfTurn ? (
-                  <span className="action-primary-sub">
-                    {nextPages.length
-                      ? `${plan.readers > 1 ? `${readerName(config, nextReader)} · ` : ''}${pagesLabel(nextPages)}`
-                      : 'وبه يُختم المصحف'}
-                  </span>
-                ) : null}
-              </button>
-
-              {timed ? (
+                <MushafPage page={page} prefetch={prefetch} />
+              </section>
+              <nav className="page-nav" aria-label="تقليب الصفحات">
                 <button
                   type="button"
-                  className="action-secondary"
-                  onClick={clockState.toggle}
-                  aria-pressed={clockState.paused}
-                  aria-label={
-                    clockState.paused
-                      ? `استئناف التوقيت، بقي ${durationWords(left ?? 0)}`
-                      : `إيقاف التوقيت مؤقتًا، بقي ${durationWords(left ?? 0)}`
-                  }
+                  className="quiet-button page-turn"
+                  onClick={press(() => dispatch({ type: 'previousPage' }))}
+                  aria-disabled={page <= 1}
+                  aria-label="الصفحة السابقة"
                 >
-                  {clockState.paused ? (
-                    <Play size={20} aria-hidden="true" />
-                  ) : (
-                    <Pause size={20} aria-hidden="true" />
-                  )}
-                  <span className="action-clock" aria-hidden="true">
-                    {left === null ? '…' : clock(left)}
+                  <ChevronRight size={20} aria-hidden="true" />
+                  <span className="page-turn-label" aria-hidden="true">
+                    السابقة
                   </span>
                 </button>
-              ) : null}
-
-              <button
-                type="button"
-                className="action-secondary"
-                data-active={
-                  audio.status === 'playing' ||
-                  audio.status === 'loading' ||
-                  undefined
-                }
-                onClick={
-                  audio.status === 'idle' || audio.status === 'error'
-                    ? audio.play
-                    : audio.stop
-                }
-                aria-label={
-                  audio.status === 'playing' || audio.status === 'loading'
-                    ? 'إيقاف الاستماع'
-                    : `استمع إلى الصفحة ${arabic(page)}`
-                }
-              >
-                {audio.status === 'playing' || audio.status === 'loading' ? (
-                  <Square size={18} aria-hidden="true" />
-                ) : (
-                  <Headphones size={20} aria-hidden="true" />
-                )}
-                <span className="action-secondary-label" aria-hidden="true">
-                  {audio.status === 'loading'
-                    ? 'جارٍ التحميل…'
-                    : audio.status === 'playing'
-                      ? 'إيقاف'
-                      : audio.status === 'error'
-                        ? 'تعذّر التشغيل'
-                        : 'استمع'}
-                </span>
-              </button>
+                <button
+                  type="button"
+                  className="quiet-button page-nav-number"
+                  onClick={() => setJumpOpen(true)}
+                  aria-label={`الصفحة ${arabic(page)} من ${arabic(PAGE_COUNT)}، انتقل إلى صفحة`}
+                >
+                  {arabic(page)} / {arabic(PAGE_COUNT)}
+                </button>
+                <button
+                  type="button"
+                  className="quiet-button page-turn"
+                  onClick={press(() => dispatch({ type: 'nextPage' }))}
+                  aria-disabled={page >= PAGE_COUNT}
+                  aria-label="الصفحة التالية"
+                >
+                  <span className="page-turn-label" aria-hidden="true">
+                    التالية
+                  </span>
+                  <ChevronLeft size={20} aria-hidden="true" />
+                </button>
+              </nav>
             </div>
           )}
-        </section>
 
-        <aside
-          className="reading-side reading-order"
-          aria-label="ترتيب القراءة"
-        >
-          {order}
-          <div className="mushaf-progress">
-            <p className="mushaf-progress-label">
-              <span>سورة {surahOfPage(page).name}</span>
-              <span>
-                {arabic(page)} من {arabic(PAGE_COUNT)}
-              </span>
-            </p>
-            <progress
-              className="mushaf-progress-bar"
-              aria-label="الموضع في المصحف"
-              max={PAGE_COUNT}
-              value={page}
-            />
-          </div>
-        </aside>
+          {complete ? null : (
+            <ActionBar toast={toast} progress={progress}>
+              <BackButton
+                onClick={back}
+                disabled={!canGoBack}
+                label={
+                  session.pageInTurn > 0 ? 'الصفحة السابقة' : 'القارئ السابق'
+                }
+              />
+              {reciter ? (
+                <>
+                  <RecitationButton
+                    reciter={reciter}
+                    status={recitation.status}
+                    left={recitation.left}
+                    onClick={toggleRecitation}
+                  />
+                  <SkipButton
+                    onClick={skip}
+                    label={
+                      nextPages.length
+                        ? `تخطَّ إلى ${plan.readers > 1 ? `${nextName}، ` : ''}${pagesLabel(nextPages)}`
+                        : 'تخطَّ، وبه يُختم المصحف'
+                    }
+                  />
+                </>
+              ) : (
+                <>
+                  <DoneButton
+                    onClick={primary}
+                    alone={plan.readers === 1}
+                    step={
+                      lastPageOfTurn
+                        ? null
+                        : `الصفحة التالية (${arabic(session.pageInTurn + 2)} من ${arabic(pages.length)})`
+                    }
+                    sub={
+                      !lastPageOfTurn
+                        ? null
+                        : nextPages.length
+                          ? `${plan.readers > 1 ? `${nextName} · ` : ''}${pagesLabel(nextPages)}`
+                          : 'وبه يُختم المصحف'
+                    }
+                  />
+                  {timed ? (
+                    <TimerButton
+                      paused={clockState.paused}
+                      left={left}
+                      onClick={clockState.toggle}
+                    />
+                  ) : null}
+                  <ListenButton
+                    status={listen.status}
+                    page={pagesLabel([page])}
+                    onPlay={press(listen.play)}
+                    onStop={listen.stop}
+                  />
+                </>
+              )}
+            </ActionBar>
+          )}
+        </section>
       </main>
 
       <Sheet
         open={circleOpen}
         onOpenChange={setCircleOpen}
         title="الحلقة"
-        description="القرّاء وترتيب القراءة"
+        description="أهل الحلقة وترتيب القراءة"
       >
         <div className="sheet-halaqa">
           {circle}
-          {order}
+          {sitting}
         </div>
       </Sheet>
 
@@ -483,7 +455,7 @@ export function ReadingScreen({
         open={jumpOpen}
         onOpenChange={setJumpOpen}
         title="الانتقال إلى"
-        description="اختر سورة أو جزءًا أو صفحة، ويُكمل القارئ الحالي منها."
+        description="اختر سورة أو جزءًا أو صفحة، ويُكمل صاحب الدور منها."
       >
         <StartPicker
           legend="الانتقال حسب"
@@ -511,20 +483,29 @@ export function ReadingScreen({
   );
 }
 
-function useTimings(reciter: string, needed: boolean) {
-  const [loaded, setLoaded] = useState<{ id: string; t: Timings } | null>(null);
-  useEffect(() => {
-    if (!needed) return;
-    let live = true;
-    loadTimings(reciter).then(
-      (t) => live && setLoaded({ id: reciter, t }),
-      () => {},
-    );
-    return () => {
-      live = false;
-    };
-  }, [reciter, needed]);
-  return loaded?.id === reciter ? loaded.t : null;
+/** Where the circle is in the Mushaf, and how far it has come today. */
+function Sitting({ page, pagesRead }: { page: number; pagesRead: number }) {
+  return (
+    <div className="sitting">
+      <p className="sitting-label">
+        <span>سورة {surahOfPage(page).name}</span>
+        <span>
+          {arabic(page)} من {arabic(PAGE_COUNT)}
+        </span>
+      </p>
+      <progress
+        className="sitting-bar"
+        aria-label="الموضع في المصحف"
+        max={PAGE_COUNT}
+        value={page}
+      />
+      <p className="sitting-note">
+        {pagesRead
+          ? `قرأتم ${pagesCount(pagesRead)} في هذا المجلس`
+          : 'بداية المجلس'}
+      </p>
+    </div>
+  );
 }
 
 function Khatm({

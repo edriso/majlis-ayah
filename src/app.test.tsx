@@ -41,8 +41,65 @@ describe('the start screen', () => {
     const user = userEvent.setup();
     render(<App />);
     expect(screen.getByRole('group', { name: 'طريقة القراءة' })).toBeTruthy();
-    await user.click(screen.getByLabelText('قارئ واحد'));
+    await user.click(
+      screen.getByRole('button', { name: 'إخراج من الحلقة: القارئ الثالث' }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'إخراج من الحلقة: القارئ الثاني' }),
+    );
     expect(screen.queryByRole('group', { name: 'طريقة القراءة' })).toBeNull();
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+  });
+
+  it('seats a sheikh, and puts him first', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: /أضف شيخًا/ }));
+    const sheet = screen.getByRole('dialog', { name: 'أضف شيخًا إلى الحلقة' });
+    await user.click(within(sheet).getByRole('radio', { name: /المنشاوي/ }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    const seats = () =>
+      screen.getAllByRole('listitem').map((li) => li.textContent);
+    expect(seats().at(-1)).toContain('الشيخ المنشاوي');
+    for (let i = 0; i < 3; i++)
+      await user.click(screen.getByRole('button', { name: 'تقديم: المنشاوي' }));
+    expect(seats()[0]).toContain('الشيخ المنشاوي');
+    expect(screen.getByRole('status').textContent).toContain(
+      'المنشاوي: المقعد ١ من ٤',
+    );
+    // A full circle takes no one else.
+    expect(
+      screen
+        .getByRole('button', { name: /أضف قارئًا/ })
+        .getAttribute('aria-disabled'),
+    ).toBe('true');
+
+    await user.click(screen.getByRole('button', { name: /ابدأ الحلقة/ }));
+    expect(status()).toContain('يتلو المنشاوي');
+    expect(screen.getByRole('button', { name: /تلاوة المنشاوي/ })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: /^تخطَّ إلى أنت/ }));
+    expect(status()).toContain('دورك');
+    expect(status()).toContain('الصفحة ٢');
+  });
+
+  it('names a reader by what was typed, and keeps the default otherwise', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(
+      screen.getByRole('textbox', { name: 'اسم القارئ في المقعد ٢' }),
+      'عمر',
+    );
+    await user.click(screen.getByRole('button', { name: 'تأخير: أنت' }));
+    // «أنت» moved, and kept being «أنت»; Omar now sits first.
+    expect(
+      (
+        screen.getByRole('textbox', {
+          name: 'اسم القارئ في المقعد ١',
+        }) as HTMLInputElement
+      ).value,
+    ).toBe('عمر');
+    await user.click(screen.getByRole('button', { name: /ابدأ الحلقة/ }));
+    expect(status()).toContain('دور عمر');
   });
 });
 

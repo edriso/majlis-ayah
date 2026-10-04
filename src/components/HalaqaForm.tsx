@@ -1,22 +1,44 @@
-import { ChevronLeft } from 'lucide-react';
-import { useId } from 'react';
-import { arabic, ordinal } from '@/data/arabic';
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronLeft,
+  Headphones,
+  UserPlus,
+  X,
+} from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { arabic, seatsCount } from '@/data/arabic';
 import { reciterById } from '@/data/reciters';
 import {
-  MAX_READERS,
-  readerName,
+  MAX_MEMBERS,
+  memberName,
+  newMember,
   type Config,
+  type Member,
+  type MemberKind,
+  type ReciterMember,
   type TurnChange,
 } from '@/halaqa/state';
 import type { Mode } from '@/halaqa/schedule';
 import { Choice } from './Choice';
+import { MemberAvatar } from './MemberAvatar';
 import { ReciterAvatar } from './ReciterAvatar';
 
+/** What the reciter list is opened for, and what choosing one does. The
+    form asks; the screen holding it shows the list (a sheet of its own on
+    the start screen, a panel of the settings sheet in a halaqa). */
+export type ReciterRequest = {
+  title: string;
+  description: string;
+  value: string;
+  apply: (reciter: string) => void;
+};
+
 /**
- * The shape of the circle: how many sit in it and what they are called, how
- * the pages pass between them, how much each reads, and what moves the turn
- * on. The same form on the start screen and in the settings, so a halaqa is
- * set up and changed in one vocabulary.
+ * The shape of the circle: who sits in it and in what order, how the pages
+ * pass between them, how much each reads, and what moves the turn on. The
+ * same form on the start screen and in the settings, so a halaqa is set up
+ * and changed in one vocabulary.
  */
 export function HalaqaForm({
   config,
@@ -25,61 +47,21 @@ export function HalaqaForm({
 }: {
   config: Config;
   onChange: (config: Config) => void;
-  onPickReciter: () => void;
+  onPickReciter: (request: ReciterRequest) => void;
 }) {
-  const id = useId();
-  const count = config.readers.length;
   const set = (patch: Partial<Config>) => onChange({ ...config, ...patch });
   const reciter = reciterById(config.reciter);
-
-  const setCount = (n: number) => {
-    // Names typed for a seat that is taken away come back if it is restored
-    // in the same visit, because the array is cut and padded, never cleared.
-    const readers = [...config.readers];
-    while (readers.length < n) readers.push('');
-    set({ readers: readers.slice(0, n) });
-  };
+  const hasReciter = config.members.some((m) => m.kind === 'reciter');
 
   return (
     <div className="halaqa-form">
-      <Choice<number>
-        legend="عدد القرّاء"
-        variant="seats"
-        value={count}
-        onChange={setCount}
-        options={Array.from({ length: MAX_READERS }, (_, i) => ({
-          value: i + 1,
-          label: <Seats n={i + 1} />,
-          ariaLabel: ['قارئ واحد', 'قارئان', 'ثلاثة قرّاء'][i],
-        }))}
+      <Members
+        members={config.members}
+        onChange={(members) => set({ members })}
+        onPickReciter={onPickReciter}
       />
 
-      <div className="reader-names">
-        {config.readers.map((name, i) => (
-          <div className="field reader-name" key={i}>
-            <label className="field-label-small" htmlFor={`${id}-r${i}`}>
-              القارئ {ordinal(i + 1)}
-            </label>
-            <input
-              id={`${id}-r${i}`}
-              className="input"
-              type="text"
-              autoComplete="off"
-              maxLength={40}
-              placeholder={readerName({ ...config, readers: [] }, i)}
-              value={name}
-              onChange={(e) => {
-                const readers = [...config.readers];
-                readers[i] = e.target.value;
-                set({ readers });
-              }}
-            />
-          </div>
-        ))}
-        <p className="field-note">الأسماء اختيارية.</p>
-      </div>
-
-      {count > 1 && (
+      {config.members.length > 1 && (
         <Choice<Mode>
           legend="طريقة القراءة"
           variant="cards"
@@ -89,12 +71,14 @@ export function HalaqaForm({
             {
               value: 'continue',
               label: 'التتابع',
-              hint: 'يقرأ كل قارئ الصفحة التالية.',
+              hint: 'يقرأ كل واحد الصفحة التالية.',
             },
             {
               value: 'repeat',
               label: 'تكرار الصفحة',
-              hint: 'يقرأ الجميع الصفحة نفسها ثم ننتقل.',
+              hint: hasReciter
+                ? 'يتلوها الشيخ ويقرؤها الحاضرون، ثم ننتقل.'
+                : 'يقرأ الجميع الصفحة نفسها ثم ننتقل.',
             },
           ]}
         />
@@ -111,58 +95,253 @@ export function HalaqaForm({
         }))}
       />
 
-      <Choice<TurnChange>
-        legend="الانتقال إلى القارئ التالي"
-        variant="cards"
-        value={config.turnChange}
-        onChange={(turnChange) => set({ turnChange })}
-        options={[
-          {
-            value: 'manual',
-            label: 'يدوي',
-            hint: 'يضغط القارئ «تمّ» حين ينتهي.',
-          },
-          {
-            value: 'reciter',
-            label: 'بتوقيت قارئ',
-            hint: 'ينتقل الدور بعد مدة تلاوة القارئ للصفحة.',
-          },
-        ]}
-      />
-
-      <button type="button" className="reciter-button" onClick={onPickReciter}>
-        <ReciterAvatar reciter={reciter} size={40} />
-        <span className="reciter-text">
-          <span className="reciter-caption">
-            {config.turnChange === 'reciter' ? 'التوقيت والاستماع' : 'الاستماع'}
+      <div className="turn-change">
+        <Choice<TurnChange>
+          legend="الانتقال إلى القارئ التالي"
+          variant="cards"
+          value={config.turnChange}
+          onChange={(turnChange) => set({ turnChange })}
+          options={[
+            {
+              value: 'manual',
+              label: 'يدوي',
+              hint: 'يضغط القارئ «تمّ» حين ينتهي.',
+            },
+            {
+              value: 'reciter',
+              label: 'بتوقيت قارئ',
+              hint: 'ينتقل الدور بعد مدة تلاوة القارئ للصفحة.',
+            },
+          ]}
+        />
+        <button
+          type="button"
+          className="reciter-button"
+          onClick={() =>
+            onPickReciter({
+              title: 'قارئ الاستماع والتوقيت',
+              description:
+                'قارئ يُستمع إليه في الصفحة، وتُقاس بتلاوته مدة الدور إن كان الانتقال بالتوقيت.',
+              value: config.reciter,
+              apply: (id) => set({ reciter: id }),
+            })
+          }
+        >
+          <ReciterAvatar reciter={reciter} size={40} />
+          <span className="reciter-text">
+            <span className="reciter-caption">
+              {config.turnChange === 'reciter' ? 'التوقيت والاستماع' : 'الاستماع'}
+            </span>
+            <span className="reciter-name">{reciter.name}</span>
           </span>
-          <span className="reciter-name">{reciter.name}</span>
-        </span>
-        <ChevronLeft size={18} aria-hidden="true" />
-        <span className="visually-hidden">، تغيير القارئ</span>
-      </button>
+          <ChevronLeft size={18} aria-hidden="true" />
+          <span className="visually-hidden">، تغيير القارئ</span>
+        </button>
+      </div>
     </div>
   );
 }
 
-/** The reader-count choice drawn as seats around a small circle. */
-function Seats({ n }: { n: number }) {
-  const angles = { 1: [90], 2: [0, 180], 3: [30, -90, 150] }[n] ?? [];
+/**
+ * Who sits in the circle, in the order they read: people, who read from the
+ * page themselves, and reciters, whose recordings recite their turns. Each
+ * can be moved up or down, renamed or rechosen, and taken out; the list
+ * keeps at least one member and at most four.
+ *
+ * Every change is said aloud in a live region, because a reordered list
+ * otherwise changes under a screen reader without a word. Focus stays on
+ * the moved member's button (React moves the element, not a copy), goes to
+ * the new name field when a reader is added, and to the next row when one
+ * is taken out.
+ */
+function Members({
+  members,
+  onChange,
+  onPickReciter,
+}: {
+  members: Member[];
+  onChange: (members: Member[]) => void;
+  onPickReciter: (request: ReciterRequest) => void;
+}) {
+  const id = useId();
+  const [message, setMessage] = useState('');
+  const focusNext = useRef<string | null>(null);
+  const full = members.length >= MAX_MEMBERS;
+  const n = members.length;
+
+  useEffect(() => {
+    if (!focusNext.current) return;
+    document.getElementById(focusNext.current)?.focus();
+    focusNext.current = null;
+  });
+
+  const add = (kind: MemberKind, reciter?: string) => {
+    const member = newMember(members, kind, reciter);
+    if (!member) return;
+    onChange([...members, member]);
+    setMessage(
+      `أُضيف إلى الحلقة: ${memberName(member)}، في المقعد ${arabic(n + 1)}.`,
+    );
+    if (kind === 'person') focusNext.current = `${id}-${member.id}-name`;
+  };
+
+  const move = (i: number, by: -1 | 1) => {
+    const j = i + by;
+    if (j < 0 || j >= n) return;
+    const next = [...members];
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+    setMessage(
+      `${memberName(members[i])}: المقعد ${arabic(j + 1)} من ${arabic(n)}.`,
+    );
+  };
+
+  const remove = (i: number) => {
+    if (n === 1) return;
+    const next = members.filter((_, k) => k !== i);
+    onChange(next);
+    setMessage(`أُخرج من الحلقة: ${memberName(members[i])}.`);
+    const neighbour = next[Math.min(i, next.length - 1)];
+    focusNext.current = `${id}-${neighbour.id}-remove`;
+  };
+
+  const pick = (i: number, member: ReciterMember) =>
+    onPickReciter({
+      title: 'اختر الشيخ',
+      description: 'من يتلو هذا الدور في الحلقة.',
+      value: member.reciter,
+      apply: (reciter) => {
+        const next = [...members];
+        next[i] = { ...member, reciter };
+        onChange(next);
+        setMessage(`يتلو هذا الدور: ${reciterById(reciter).name}.`);
+      },
+    });
+
   return (
-    <svg viewBox="0 0 40 40" className="seats-figure" aria-hidden="true">
-      <circle cx="20" cy="20" r="11" className="seats-ring" />
-      {angles.map((a) => (
-        <circle
-          key={a}
-          cx={20 + 11 * Math.cos((a * Math.PI) / 180)}
-          cy={20 + 11 * Math.sin((a * Math.PI) / 180)}
-          r="4"
-          className="seats-seat"
-        />
-      ))}
-      <text x="20" y="21" className="seats-count">
-        {arabic(n)}
-      </text>
-    </svg>
+    <fieldset className="members" aria-describedby={`${id}-note`}>
+      <legend className="field-label">أهل الحلقة</legend>
+      <p className="field-note members-note" id={`${id}-note`}>
+        يقرؤون بهذا الترتيب، والأسماء اختيارية.
+      </p>
+
+      <ol className="member-list">
+        {members.map((m, i) => {
+          const name = memberName(m);
+          return (
+            <li className="member" key={m.id} data-kind={m.kind}>
+              <MemberAvatar member={m} size={40} />
+              {m.kind === 'person' ? (
+                <input
+                  id={`${id}-${m.id}-name`}
+                  className="input member-name"
+                  type="text"
+                  autoComplete="off"
+                  maxLength={40}
+                  aria-label={`اسم القارئ في المقعد ${arabic(i + 1)}`}
+                  placeholder={memberName({ ...m, name: '' })}
+                  value={m.name}
+                  onChange={(e) => {
+                    const next = [...members];
+                    next[i] = { ...m, name: e.target.value };
+                    onChange(next);
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="member-reciter"
+                  onClick={() => pick(i, m)}
+                  aria-label={`الشيخ في المقعد ${arabic(i + 1)}: ${reciterById(m.reciter).name}، تغيير`}
+                >
+                  <span className="member-reciter-name">
+                    الشيخ {reciterById(m.reciter).short}
+                  </span>
+                  <span className="member-reciter-meta">
+                    {reciterById(m.reciter).style} · تُسمَع تلاوته
+                  </span>
+                </button>
+              )}
+              <span className="member-actions">
+                <button
+                  type="button"
+                  className="member-action"
+                  onClick={() => move(i, -1)}
+                  aria-disabled={i === 0}
+                  aria-label={`تقديم: ${name}`}
+                  title="قدِّم"
+                >
+                  <ArrowUp size={18} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className="member-action"
+                  onClick={() => move(i, 1)}
+                  aria-disabled={i === n - 1}
+                  aria-label={`تأخير: ${name}`}
+                  title="أخِّر"
+                >
+                  <ArrowDown size={18} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  id={`${id}-${m.id}-remove`}
+                  className="member-action"
+                  onClick={() => remove(i)}
+                  aria-disabled={n === 1}
+                  aria-label={`إخراج من الحلقة: ${name}`}
+                  title="أخرِج من الحلقة"
+                >
+                  <X size={18} aria-hidden="true" />
+                </button>
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+
+      <div className="member-add">
+        <button
+          type="button"
+          className="member-add-button"
+          onClick={() => add('person')}
+          aria-disabled={full}
+        >
+          <UserPlus size={20} aria-hidden="true" />
+          <span className="member-add-text">
+            <span className="member-add-label">أضف قارئًا</span>
+            <span className="member-add-hint">يقرأ بنفسه</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          className="member-add-button"
+          onClick={() => {
+            if (full) return;
+            onPickReciter({
+              title: 'أضف شيخًا إلى الحلقة',
+              description:
+                'شيخ تُسمَع تلاوته في دوره، ثم ينتقل الدور إلى من بعده.',
+              value: '',
+              apply: (reciter) => add('reciter', reciter),
+            });
+          }}
+          aria-disabled={full}
+        >
+          <Headphones size={20} aria-hidden="true" />
+          <span className="member-add-text">
+            <span className="member-add-label">أضف شيخًا</span>
+            <span className="member-add-hint">تُسمَع تلاوته في دوره</span>
+          </span>
+        </button>
+      </div>
+      {full ? (
+        <p className="field-note">اكتملت الحلقة: {seatsCount(MAX_MEMBERS)}.</p>
+      ) : null}
+
+      <output className="visually-hidden" aria-live="polite">
+        {message}
+      </output>
+    </fieldset>
   );
 }

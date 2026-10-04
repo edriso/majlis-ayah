@@ -8,7 +8,7 @@ import {
   type View,
 } from '@/halaqa/state';
 import { Choice } from './Choice';
-import { HalaqaForm } from './HalaqaForm';
+import { HalaqaForm, type ReciterRequest } from './HalaqaForm';
 import { ReciterPicker } from './ReciterPicker';
 import { Sheet } from './Sheet';
 import { StartPicker } from './StartPicker';
@@ -40,28 +40,30 @@ export function SettingsPanel({
   desktop: boolean;
   dispatch: Dispatch<Action>;
 }) {
-  const [panel, setPanel] = useState<'settings' | 'reciters'>('settings');
+  // The reciter list opens in place of the settings, with a way back,
+  // rather than as a sheet over a sheet.
+  const [picking, setPicking] = useState<ReciterRequest | null>(null);
   const close = (v: boolean) => {
     onOpenChange(v);
-    if (!v) setPanel('settings');
+    if (!v) setPicking(null);
   };
   const configure = (config: Session['config']) =>
     dispatch({ type: 'configure', config });
 
-  if (panel === 'reciters')
+  if (picking)
     return (
       <Sheet
         open={open}
         onOpenChange={close}
-        title="اختر القارئ"
-        description="قارئ تُقاس بتلاوته مدة الدور، ويُستمع إليه في الصفحة."
-        onBack={() => setPanel('settings')}
+        title={picking.title}
+        description={picking.description}
+        onBack={() => setPicking(null)}
       >
         <ReciterPicker
-          value={session.config.reciter}
+          value={picking.value}
           onChange={(reciter) => {
-            configure({ ...session.config, reciter });
-            setPanel('settings');
+            picking.apply(reciter);
+            setPicking(null);
           }}
         />
       </Sheet>
@@ -81,7 +83,7 @@ export function SettingsPanel({
         <HalaqaForm
           config={session.config}
           onChange={configure}
-          onPickReciter={() => setPanel('reciters')}
+          onPickReciter={setPicking}
         />
       </section>
 
@@ -142,7 +144,9 @@ export function SettingsPanel({
             <dt>
               <kbd>←</kbd>
             </dt>
-            <dd>تمّ، القارئ التالي (أو الصفحة التالية في الدور)</dd>
+            <dd>
+              تمّ، القارئ التالي (أو الصفحة التالية في الدور)، وتخطّي تلاوة الشيخ
+            </dd>
           </div>
           <div>
             <dt>
@@ -154,7 +158,7 @@ export function SettingsPanel({
             <dt>
               <kbd>مسافة</kbd>
             </dt>
-            <dd>إيقاف التوقيت مؤقتًا واستئنافه</dd>
+            <dd>إيقاف تلاوة الشيخ أو التوقيت مؤقتًا، واستئنافهما</dd>
           </div>
         </dl>
       </section>

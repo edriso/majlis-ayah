@@ -43,6 +43,10 @@ export function counted(n: number, forms: CountedForms) {
 export const pagesCount = (n: number) =>
   counted(n, { one: 'صفحة واحدة', two: 'صفحتان', few: 'صفحات', many: 'صفحة' });
 
+/** Seats in the circle, as a label. */
+export const seatsCount = (n: number) =>
+  counted(n, { one: 'مقعد واحد', two: 'مقعدان', few: 'مقاعد', many: 'مقعدًا' });
+
 /** Readers, as a label. */
 export const readersCount = (n: number) =>
   counted(n, { one: 'قارئ واحد', two: 'قارئان', few: 'قرّاء', many: 'قارئًا' });

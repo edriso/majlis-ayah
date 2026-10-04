@@ -1,9 +1,10 @@
 /* Who reads which pages, worked out from nothing but a turn number.
 
-   A halaqa is a circle of one to three readers taking turns. Turn `t` belongs
-   to reader `t % readers`, always, so the circle goes round in the order it
-   was set up and wraps back to the first reader. What a turn covers depends
-   on the mode:
+   A halaqa is a circle of one to four readers taking turns; a reader may be
+   a person or a recorded reciter, but here they are only seats. Turn `t`
+   belongs to reader `t % readers`, always, so the circle goes round in the
+   order it was set up and wraps back to the first reader. What a turn
+   covers depends on the mode:
 
      continue  every turn reads the pages after the last turn's
                (reader 1: 20, reader 2: 21, reader 3: 22, reader 1: 23 …)
@@ -84,31 +85,13 @@ export type Seat = {
   pages: number[];
 };
 
-/**
- * The order panel for continue mode: the turn just finished, the one being
- * read, and the next two, which is enough to answer "who reads next?" without
- * turning into a timetable.
- */
-export function upcoming(plan: Plan, anchor: Anchor, turn: number): Seat[] {
-  const seats: Seat[] = [];
-  for (let t = turn - 1; t <= turn + 2; t++) {
-    // A turn before the anchor was read on pages that no longer follow from
-    // it, so it is not shown as though it had been.
-    if (t < 0 || t < anchor.turn) continue;
-    const pages = pagesOf(plan, anchor, t);
-    if (pages.length === 0) continue;
-    seats.push({ turn: t, reader: readerOf(plan, t), pages });
-  }
-  return seats;
-}
-
 export type RoundSeat = Seat & {
   state: 'done' | 'now' | 'waiting' | 'skipped';
 };
 
 /**
- * The round panel for repeat mode: every reader against the pages this round
- * is on. A reader whose turn in this round came before the anchor did not
+ * Repeat mode's round: every reader against the pages this round is on, as
+ * the circle marks them. A reader whose turn in this round came before the anchor did not
  * read these pages (the halaqa jumped here after them), so they are shown as
  * skipped rather than ticked.
  */

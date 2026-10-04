@@ -1,0 +1,396 @@
+/* The one audio element the app plays recitations on, and what is playing.
+
+   Two things play: a reciter seated in the circle reciting his turn, and
+   «استمع», a page played by the halaqa's reciter for a reader to listen to.
+   Both are a queue of segments, each a stretch of a surah recording from one
+   timestamp to another (see src/data/timings.ts). A turn of two pages is two
+   or more segments; a page holding the end of one surah and the start of
+   the next is two.
+
+   One element for everything, because a phone lets a page play sound only
+   from an element that has already played once in answer to a tap. `prime()`
+   plays a moment of silence on it from the first tap, so a reciter whose
+   turn comes round on its own (a timed turn ending, another reciter
+   finishing) can start without anyone touching the screen. When a browser
+   refuses anyway the status says `blocked`, and the next tap plays.
+
+   Framework-free, so it can be tested with a fake element; React reads it
+   through `useSyncExternalStore` (see useRecitation.ts). */
+
+import type { Segment } from '@/data/timings';
+
+export type PlayerStatus =
+  | 'idle'
+  | 'loading'
+  | 'playing'
+  | 'paused'
+  /** The browser would not start sound without a tap. */
+  | 'blocked'
+  | 'error'
+  /** The queue played to its end. */
+  | 'ended';
+
+export type PlayerState = {
+  /** Who started what is playing; the caller decides what a key means and
+      only ever acts on a state carrying its own. */
+  key: string;
+  status: PlayerStatus;
+  /** The page being recited. */
+  page: number;
+  /** Milliseconds played and in all, over the whole queue. */
+  played: number;
+  total: number;
+};
+
+export type Meta = { title: string; artist: string; artwork?: string };
+
+/** The part of an audio element the player uses. */
+export type Media = Pick<
+  HTMLMediaElement,
+  | 'src'
+  | 'currentTime'
+  | 'readyState'
+  | 'ended'
+  | 'preload'
+  | 'play'
+  | 'pause'
+  | 'addEventListener'
+>;
+
+const IDLE: PlayerState = {
+  key: '',
+  status: 'idle',
+  page: 0,
+  played: 0,
+  total: 0,
+};
+
+/** Two stretches of the same recording this close are one: the next page
+    starts where the last ended, and seeking there would only stutter. */
+const SEAMLESS_MS = 250;
+
+export class Player {
+  private media: Media | null = null;
+  private queue: Segment[] = [];
+  private at = 0;
+  private state: PlayerState = IDLE;
+  private listeners = new Set<() => void>();
+  private onPage: ((page: number) => void) | undefined;
+  private onDone: (() => void) | undefined;
+  /** A position to seek to once the recording's length is known. */
+  private pendingSeek: number | null = null;
+  private stopTimer: ReturnType<typeof setTimeout> | undefined;
+  private primed = false;
+
+  constructor(private readonly create: () => Media) {}
+
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
+
+  getState = () => this.state;
+
+  /**
+   * Plays `queue` from its first segment on `start` (or its first), replacing
+   * whatever was playing. `onPage` hears each new page as the recitation
+   * reaches it, and `onDone` the end of the queue.
+   */
+  play(
+    key: string,
+    queue: Segment[],
+    options: {
+      start?: number;
+      onPage?: (page: number) => void;
+      onDone?: () => void;
+      meta?: Meta;
+    } = {},
+  ) {
+    this.clearTimer();
+    this.queue = queue;
+    this.onPage = options.onPage;
+    this.onDone = options.onDone;
+    const total = queue.reduce((sum, s) => sum + (s.to - s.from), 0);
+    const first = Math.max(
+      0,
+      queue.findIndex((s) => s.page === options.start),
+    );
+    this.set({
+      key,
+      status: 'loading',
+      page: queue[first]?.page ?? 0,
+      played: this.playedBefore(first),
+      total,
+    });
+    if (queue.length === 0) return this.finish();
+    setMediaSession(options.meta, this);
+    this.load(first);
+  }
+
+  /** Carries on from where it paused, or tries again after a refusal. */
+  resume() {
+    const media = this.element();
+    if (!this.queue.length) return;
+    if (this.state.status === 'error') return this.load(this.at);
+    this.set({ status: 'loading' });
+    this.start(media);
+  }
+
+  pause() {
+    if (!this.queue.length || this.state.status === 'ended') return;
+    this.clearTimer();
+    this.media?.pause();
+    this.set({ status: 'paused' });
+  }
+
+  /** Stops, if what is playing is `key`'s (or anything, with no key). */
+  stop(key?: string) {
+    if (key !== undefined && key !== this.state.key) return;
+    this.clearTimer();
+    this.queue = [];
+    this.onPage = this.onDone = undefined;
+    this.media?.pause();
+    this.set(IDLE);
+  }
+
+  /** Moves to the first segment of `page`, keeping the play state. */
+  seekPage(page: number) {
+    const i = this.queue.findIndex((s) => s.page === page);
+    if (i === -1 || i === this.at) return;
+    const paused = this.state.status === 'paused';
+    this.set({ page, played: this.playedBefore(i) });
+    this.load(i, !paused);
+  }
+
+  /** Unlocks the element for sound started later without a tap. Call it
+      from a tap; it does nothing once the element has played. */
+  prime() {
+    if (this.primed) return;
+    this.primed = true;
+    if (this.queue.length) return;
+    const media = this.element();
+    media.src = silence();
+    media.play().then(
+      () => {
+        if (!this.queue.length) media.pause();
+      },
+      () => {
+        this.primed = false;
+      },
+    );
+  }
+
+  private set(patch: Partial<PlayerState>) {
+    this.state = { ...this.state, ...patch };
+    for (const listener of this.listeners) listener();
+    if (patch.status) setPlaybackState(patch.status);
+  }
+
+  private element(): Media {
+    if (this.media) return this.media;
+    const media = this.create();
+    media.preload = 'auto';
+    // Events from the silence `prime()` plays, or from a queue just
+    // stopped, find nothing queued and are ignored.
+    media.addEventListener('timeupdate', () => this.tick());
+    media.addEventListener('ended', () => this.queue.length && this.advance());
+    media.addEventListener('playing', () => {
+      if (this.queue.length) this.set({ status: 'playing' });
+      this.tick();
+    });
+    media.addEventListener('pause', () => {
+      // Paused by something other than this player: the system, a headset
+      // unplugged, another app's sound. A pause on the way to the next
+      // file, or at the end of one, is the player's own.
+      if (
+        this.queue.length &&
+        this.state.status === 'playing' &&
+        this.pendingSeek === null &&
+        !media.ended
+      ) {
+        this.clearTimer();
+        this.set({ status: 'paused' });
+      }
+    });
+    media.addEventListener('waiting', () => {
+      if (this.queue.length && this.state.status === 'playing')
+        this.set({ status: 'loading' });
+    });
+    media.addEventListener('loadedmetadata', () => {
+      if (this.pendingSeek === null) return;
+      media.currentTime = this.pendingSeek;
+      this.pendingSeek = null;
+    });
+    media.addEventListener('error', () => {
+      if (!this.queue.length) return;
+      this.clearTimer();
+      this.set({ status: 'error' });
+    });
+    this.media = media;
+    return media;
+  }
+
+  private load(i: number, autoplay = true) {
+    const media = this.element();
+    const segment = this.queue[i];
+    this.at = i;
+    this.clearTimer();
+    const from = segment.from / 1000;
+    if (sameFile(media.src, segment.url) && media.readyState >= 1) {
+      this.pendingSeek = null;
+      media.currentTime = from;
+    } else {
+      // Until the new file's metadata is in, its position cannot be set,
+      // and the element still reports the old file's.
+      this.pendingSeek = from;
+      media.src = segment.url;
+    }
+    if (autoplay) {
+      this.set({ status: 'loading' });
+      this.start(media);
+    }
+  }
+
+  private start(media: Media) {
+    const key = this.state.key;
+    media.play().then(
+      () => {
+        if (this.state.key === key && this.queue.length)
+          this.set({ status: 'playing' });
+      },
+      (error: unknown) => {
+        if (this.state.key !== key || !this.queue.length) return;
+        const name = error instanceof Error ? error.name : '';
+        // A play cut short by a pause or a new source is not a failure.
+        if (name === 'AbortError') return;
+        this.set({ status: name === 'NotAllowedError' ? 'blocked' : 'error' });
+      },
+    );
+  }
+
+  /** On every position update: the time played, and whether the current
+      stretch is over. */
+  private tick() {
+    const media = this.media;
+    const segment = this.queue[this.at];
+    if (!media || !segment || this.pendingSeek !== null) return;
+    if (this.state.status === 'paused' || this.state.status === 'ended') return;
+    const ms = media.currentTime * 1000;
+    if (ms >= segment.to - 20) return this.advance();
+    const into = Math.min(
+      Math.max(ms - segment.from, 0),
+      segment.to - segment.from,
+    );
+    this.set({ played: this.playedBefore(this.at) + into });
+    // Position updates come four times a second at best; a timer stops the
+    // stretch on its last word rather than up to a quarter second into the
+    // next ayah.
+    this.clearTimer();
+    if (this.state.status === 'playing')
+      this.stopTimer = setTimeout(() => this.tick(), segment.to - ms);
+  }
+
+  private advance() {
+    const current = this.queue[this.at];
+    const next = this.queue[this.at + 1];
+    this.clearTimer();
+    if (!next) return this.finish();
+    const seamless =
+      sameFile(next.url, current.url) &&
+      Math.abs(next.from - current.to) < SEAMLESS_MS;
+    if (next.page !== current.page) {
+      this.set({ page: next.page });
+      this.onPage?.(next.page);
+    }
+    if (seamless) {
+      this.at += 1;
+      this.tick();
+    } else this.load(this.at + 1);
+  }
+
+  private finish() {
+    this.media?.pause();
+    const done = this.onDone;
+    this.queue = [];
+    this.onPage = this.onDone = undefined;
+    this.set({ status: 'ended', played: this.state.total });
+    done?.();
+  }
+
+  private playedBefore(i: number) {
+    let sum = 0;
+    for (let j = 0; j < i; j++) sum += this.queue[j].to - this.queue[j].from;
+    return sum;
+  }
+
+  private clearTimer() {
+    clearTimeout(this.stopTimer);
+    this.stopTimer = undefined;
+  }
+}
+
+/** Whether an element's `src` (always absolute once set) is `url`. */
+const sameFile = (src: string, url: string) =>
+  src === url || src.endsWith(url.replace(/^https?:/, ''));
+
+/** The lock screen's and the headphones' controls, where there are any. */
+function setMediaSession(meta: Meta | undefined, player: Player) {
+  if (!meta || typeof navigator === 'undefined' || !navigator.mediaSession)
+    return;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: meta.title,
+      artist: meta.artist,
+      album: 'مجلس نور',
+      artwork: meta.artwork ? [{ src: meta.artwork }] : [],
+    });
+    navigator.mediaSession.setActionHandler('play', () => player.resume());
+    navigator.mediaSession.setActionHandler('pause', () => player.pause());
+  } catch {
+    // An older browser with half the API: the recitation plays regardless.
+  }
+}
+
+/** Whether the system shows a recitation as playing, paused, or nothing. */
+function setPlaybackState(status: PlayerStatus) {
+  if (typeof navigator === 'undefined' || !navigator.mediaSession) return;
+  const session = navigator.mediaSession;
+  if (status === 'playing' || status === 'loading')
+    session.playbackState = 'playing';
+  else if (status === 'paused' || status === 'blocked')
+    session.playbackState = 'paused';
+  else {
+    session.playbackState = 'none';
+    session.metadata = null;
+  }
+}
+
+let silent: string | undefined;
+
+/** A tenth of a second of silence as a WAV, made once. */
+function silence() {
+  if (silent) return silent;
+  const samples = 800;
+  const bytes = new Uint8Array(44 + samples);
+  const view = new DataView(bytes.buffer);
+  const text = (at: number, s: string) => {
+    for (let i = 0; i < s.length; i++) bytes[at + i] = s.charCodeAt(i);
+  };
+  text(0, 'RIFF');
+  view.setUint32(4, 36 + samples, true);
+  text(8, 'WAVEfmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, 8000, true); // samples a second
+  view.setUint32(28, 8000, true); // bytes a second
+  view.setUint16(32, 1, true);
+  view.setUint16(34, 8, true); // bits a sample
+  text(36, 'data');
+  view.setUint32(40, samples, true);
+  bytes.fill(128, 44); // the midpoint of unsigned 8-bit: silence
+  silent = `data:audio/wav;base64,${btoa(String.fromCharCode(...bytes))}`;
+  return silent;
+}

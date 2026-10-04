@@ -20,3 +20,11 @@ if (!window.matchMedia)
 window.scrollTo = () => {};
 if (!('scrollTo' in Element.prototype))
   Object.assign(Element.prototype, { scrollTo: () => {} });
+
+// jsdom has media elements but plays nothing; a recitation here only ever
+// starts, and the player is tested on its own with a fake element.
+Object.assign(HTMLMediaElement.prototype, {
+  play: () => Promise.resolve(),
+  pause: () => {},
+  load: () => {},
+});
