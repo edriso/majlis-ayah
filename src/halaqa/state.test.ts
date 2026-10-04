@@ -303,7 +303,11 @@ describe('a saved halaqa', () => {
       config: { readers: 'x', pagesPerTurn: 9, startPage: 9000 },
       session: { turn: -3, anchor: { turn: 5, page: 0 }, config: {} },
     });
-    expect(s.prefs).toEqual({ theme: 'burgundy', view: 'balanced' });
+    expect(s.prefs).toEqual({
+      theme: 'burgundy',
+      view: 'balanced',
+      photos: 'show',
+    });
     expect(s.config.pagesPerTurn).toBe(1);
     expect(s.config.startPage).toBe(1);
     expect(s.session!.turn).toBe(0);

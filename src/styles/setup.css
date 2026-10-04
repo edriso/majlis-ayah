@@ -1,10 +1,18 @@
 /* The start screen: a single quiet column. */
 
 .setup {
+  position: relative;
   width: min(560px, 100%);
   margin: 0 auto;
   padding: max(40px, env(safe-area-inset-top)) 16px
     max(48px, env(safe-area-inset-bottom));
+}
+
+/* The gear sits at the far corner, away from where the eye starts. */
+.setup-appearance {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  inset-inline-end: 16px;
 }
 
 .setup-intro {

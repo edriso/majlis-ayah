@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Settings, Users } from 'lucide-react';
-import { useEffect, useState, type Dispatch } from 'react';
+import { useEffect, useRef, useState, type Dispatch } from 'react';
 import { arabic, clock, pagesCount } from '@/data/arabic';
 import { PAGE_COUNT, surahOfPage } from '@/data/mushaf';
 import { reciterById } from '@/data/reciters';
@@ -36,13 +36,13 @@ import {
   RecitationButton,
   SkipButton,
   TimerButton,
-} from './ActionBar';
-import { Brand } from './Logo';
-import { Choice } from './Choice';
-import { HalaqaCircle } from './HalaqaCircle';
-import { SettingsPanel } from './SettingsPanel';
-import { Sheet } from './Sheet';
-import { StartPicker } from './StartPicker';
+} from '@/components/ActionBar';
+import { Brand } from '@/components/Logo';
+import { Choice } from '@/components/Choice';
+import { HalaqaCircle } from '@/components/HalaqaCircle';
+import { SettingsPanel } from '@/components/SettingsPanel';
+import { Sheet } from '@/components/Sheet';
+import { StartPicker } from '@/components/StartPicker';
 
 /**
  * The halaqa itself: the page being read, the circle, and one button that
@@ -81,6 +81,7 @@ export function ReadingScreen({
   // A turn, and the pages it covers: a new key is a new turn to time or
   // to recite from its start.
   const turnKey = `${turn}:${anchor.turn}:${anchor.page}:${plan.mode}:${plan.pagesPerTurn}`;
+  const showPhoto = prefs.photos === 'show';
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [circleOpen, setCircleOpen] = useState(false);
@@ -126,12 +127,14 @@ export function ReadingScreen({
     onPage: (p) => dispatch({ type: 'goToPage', page: p }),
     onDone: finishTurn,
     onRetry: retry,
+    showPhoto,
   });
   const listen = useListen({
     reciter: config.reciter,
     turnKey,
     page,
     timings,
+    showPhoto,
   });
 
   const left = reciting ? recitation.left : timed ? clockState.left : null;
@@ -150,6 +153,24 @@ export function ReadingScreen({
   });
   const skip = press(finishTurn);
   const toggleRecitation = press(recitation.toggle);
+  const toggleListen = press(listen.toggle);
+
+  /* One pause for a reader's timed turn: the clock stops, and so does the
+     reciter if «استمع» is playing, since a pause that leaves a voice
+     reciting is not one. Resuming brings back what the pause stopped, and
+     only that. */
+  const listenHeld = useRef(false);
+  const togglePause = () => {
+    player.prime();
+    if (clockState.paused) {
+      clockState.resume();
+      if (listenHeld.current) listen.resume();
+      listenHeld.current = false;
+    } else {
+      clockState.pause();
+      listenHeld.current = listen.pause();
+    }
+  };
   const back = press(() => {
     if (session.pageInTurn > 0) dispatch({ type: 'previousPage' });
     else dispatch({ type: 'previousTurn' });
@@ -192,12 +213,16 @@ export function ReadingScreen({
         e.preventDefault();
         if (canGoBack) back();
       } else if (e.key === ' ' && !t?.closest('button, a')) {
+        const listening = listen.status !== 'idle' && listen.status !== 'error';
         if (reciting) {
           e.preventDefault();
           toggleRecitation();
         } else if (timed) {
           e.preventDefault();
-          clockState.toggle();
+          togglePause();
+        } else if (listening) {
+          e.preventDefault();
+          toggleListen();
         }
       }
     };
@@ -423,14 +448,13 @@ export function ReadingScreen({
                     <TimerButton
                       paused={clockState.paused}
                       left={left}
-                      onClick={clockState.toggle}
+                      onClick={togglePause}
                     />
                   ) : null}
                   <ListenButton
                     status={listen.status}
                     page={pagesLabel([page])}
-                    onPlay={press(listen.play)}
-                    onStop={listen.stop}
+                    onClick={toggleListen}
                   />
                 </>
               )}

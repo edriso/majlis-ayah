@@ -56,7 +56,17 @@ describe('the start screen', () => {
     render(<App />);
     await user.click(screen.getByRole('button', { name: /أضف شيخًا/ }));
     const sheet = screen.getByRole('dialog', { name: 'أضف شيخًا إلى الحلقة' });
-    await user.click(within(sheet).getByRole('radio', { name: /المنشاوي/ }));
+    // Heard before chosen: the sample button presses and unpresses.
+    const sample = within(sheet).getByRole('button', {
+      name: /^استمع إلى محمد صديق المنشاوي/,
+    });
+    await user.click(sample);
+    expect(sample.getAttribute('aria-pressed')).toBe('true');
+    await user.click(sample);
+    expect(sample.getAttribute('aria-pressed')).toBe('false');
+    await user.click(
+      within(sheet).getByRole('button', { name: /^محمد صديق المنشاوي/ }),
+    );
     expect(screen.queryByRole('dialog')).toBeNull();
     const seats = () =>
       screen.getAllByRole('listitem').map((li) => li.textContent);
@@ -80,6 +90,39 @@ describe('the start screen', () => {
     await user.click(screen.getByRole('button', { name: /^تخطَّ إلى أنت/ }));
     expect(status()).toContain('دورك');
     expect(status()).toContain('الصفحة ٢');
+  });
+
+  it('groups the reciters by pace', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: /أضف شيخًا/ }));
+    const sheet = screen.getByRole('dialog', { name: 'أضف شيخًا إلى الحلقة' });
+    const bands = within(sheet)
+      .getAllByRole('heading', { level: 3 })
+      .map((h) => h.textContent);
+    expect(bands).toEqual([
+      'أداء متأنٍّ جدًّا',
+      'أداء متأنٍّ',
+      'أداء معتدل',
+      'أداء سريع',
+    ]);
+    expect(
+      within(sheet).getByRole('button', { name: /^سعود الشريم.*١:٤٨ للصفحة/ }),
+    ).toBeTruthy();
+  });
+
+  it('hides the reciters’ photos for whoever would rather not see faces', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const photos = () => document.querySelectorAll('img.reciter-photo');
+    expect(photos().length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('button', { name: 'المظهر' }));
+    await user.click(screen.getByRole('radio', { name: 'مموّهة' }));
+    expect([...photos()].every((img) => img.hasAttribute('data-blur'))).toBe(
+      true,
+    );
+    await user.click(screen.getByRole('radio', { name: 'مخفية' }));
+    expect(photos()).toHaveLength(0);
   });
 
   it('names a reader by what was typed, and keeps the default otherwise', async () => {
@@ -141,6 +184,24 @@ describe('a halaqa', () => {
     expect(within(card).getByText(/الصفحة ٢ · سورة البقرة/)).toBeTruthy();
     await user.click(within(card).getByRole('button', { name: /متابعة/ }));
     expect(status()).toContain('دور القارئ الثاني');
+  });
+
+  it('pauses the reciter heard through «استمع» with the turn’s clock', async () => {
+    localStorage.setItem(
+      'majlis-noor:v1',
+      JSON.stringify({ config: { turnChange: 'reciter' } }),
+    );
+    const user = await start();
+    await user.click(screen.getByRole('button', { name: /^استمع إلى الصفحة/ }));
+    await screen.findByRole('button', { name: 'إيقاف الاستماع مؤقتًا' });
+    await user.click(screen.getByRole('button', { name: /^إيقاف التوقيت/ }));
+    expect(
+      screen.getByRole('button', { name: /^متابعة الاستماع/ }),
+    ).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: /^استئناف التوقيت/ }));
+    expect(
+      await screen.findByRole('button', { name: 'إيقاف الاستماع مؤقتًا' }),
+    ).toBeTruthy();
   });
 
   it('announces whose turn it is to a screen reader', async () => {

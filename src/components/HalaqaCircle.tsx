@@ -10,6 +10,7 @@ import {
   type Plan,
 } from '@/halaqa/schedule';
 import { memberName, type Config, type Member } from '@/halaqa/state';
+import { ReciterFace } from './ReciterAvatar';
 
 /** Where each seat sits, in degrees with 0 at the right and 90 at the foot.
     The first member sits at the near right, where a right-to-left reader
@@ -171,24 +172,18 @@ export function HalaqaCircle({
   );
 }
 
-/** What fills a seat: a reciter's photo or initial, a reader's initial, or
-    a figure for a reader not named. */
+/** What fills a seat: a reciter's face as the reader has photos shown, a
+    reader's initial, or a figure for a reader not named. */
 function SeatFace({ member }: { member: Member }) {
-  if (member.kind === 'reciter') {
-    const r = reciterById(member.reciter);
-    return r.photo ? (
-      <img
-        className="seat-photo"
-        src={`${import.meta.env.BASE_URL}reciters/${r.photo}`}
-        alt=""
-        decoding="async"
-      />
-    ) : (
-      <span className="seat-mark" aria-hidden="true">
-        {r.short.replace(/^ال/, '').at(0)}
+  if (member.kind === 'reciter')
+    return (
+      <span className="seat-face">
+        <ReciterFace
+          reciter={reciterById(member.reciter)}
+          initialClass="seat-mark"
+        />
       </span>
     );
-  }
   const initial = member.name.trim().at(0);
   return (
     <span className="seat-mark" aria-hidden="true">

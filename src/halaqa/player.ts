@@ -86,7 +86,19 @@ export class Player {
   private stopTimer: ReturnType<typeof setTimeout> | undefined;
   private primed = false;
 
-  constructor(private readonly create: () => Media) {}
+  /**
+   * `create` makes the element, on first use. A player with `session`
+   * false (one for samples) keeps off the lock screen, which belongs to
+   * the halaqa's own recitation.
+   */
+  constructor(
+    private readonly create: () => Media,
+    private readonly options: { session?: boolean } = {},
+  ) {}
+
+  private get session() {
+    return this.options.session ?? true;
+  }
 
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -129,7 +141,7 @@ export class Player {
       total,
     });
     if (queue.length === 0) return this.finish();
-    setMediaSession(options.meta, this);
+    if (this.session) setMediaSession(options.meta, this);
     this.load(first);
   }
 
@@ -192,7 +204,7 @@ export class Player {
   private set(patch: Partial<PlayerState>) {
     this.state = { ...this.state, ...patch };
     for (const listener of this.listeners) listener();
-    if (patch.status) setPlaybackState(patch.status);
+    if (patch.status && this.session) setPlaybackState(patch.status);
   }
 
   private element(): Media {

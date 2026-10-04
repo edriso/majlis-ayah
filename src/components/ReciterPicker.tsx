@@ -1,73 +1,103 @@
-import { Check } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Check, Play, Square } from 'lucide-react';
+import { useId } from 'react';
 import { clock } from '@/data/arabic';
-import { reciters } from '@/data/reciters';
-import { averagePage, loadTimings } from '@/data/timings';
+import { paceLabel, reciters, type Reciter } from '@/data/reciters';
+import { useSample, useTimings } from '@/halaqa/useRecitation';
 import { ReciterAvatar } from './ReciterAvatar';
 
+/** The reciters in the bands `paceLabel` names, the most deliberate first,
+    which is the order `reciters` already keeps. */
+const paceBands = reciters.reduce<{ label: string; members: Reciter[] }[]>(
+  (bands, reciter) => {
+    const label = paceLabel(reciter.secondsPerPage);
+    const last = bands.at(-1);
+    if (last?.label === label) last.members.push(reciter);
+    else bands.push({ label, members: [reciter] });
+    return bands;
+  },
+  [],
+);
+
 /**
- * The reciters, each with his pace over an average page, which is what the
- * choice decides when turns are timed: «نحو ١:٥٠ للصفحة».
+ * The reciters, grouped by how deliberately they recite, since that is what
+ * decides how long a turn is and what a halaqa learning new pages chooses
+ * between. Each shows his average page, «نحو ٤:١٤ للصفحة», and can be heard
+ * before he is chosen.
+ *
+ * Each is a button that says whether it is the chosen one, rather than a
+ * radio: arrowing through a radio group selects as it goes, and choosing
+ * closes this list.
  */
 export function ReciterPicker({
   value,
   onChange,
 }: {
+  /** The chosen reciter, or '' when adding one. */
   value: string;
   onChange: (id: string) => void;
 }) {
-  const paces = usePaces();
-  return (
-    <fieldset className="reciter-list">
-      <legend className="visually-hidden">القارئ</legend>
-      {reciters.map((r) => {
-        const checked = r.id === value;
-        const pace = paces[r.id];
-        return (
-          <label
-            key={r.id}
-            className="reciter-row"
-            data-checked={checked || undefined}
-          >
-            <input
-              type="radio"
-              name="reciter"
-              value={r.id}
-              checked={checked}
-              onChange={() => onChange(r.id)}
-            />
-            <ReciterAvatar reciter={r} size={48} />
-            <span className="reciter-text">
-              <span className="reciter-name">{r.name}</span>
-              <span className="reciter-meta">
-                {r.style}
-                {pace ? ` · نحو ${clock(pace)} للصفحة` : ''}
-              </span>
-            </span>
-            <span className="reciter-check" aria-hidden="true">
-              {checked ? <Check size={18} /> : null}
-            </span>
-          </label>
-        );
-      })}
-    </fieldset>
-  );
-}
+  const { timings } = useTimings(reciters.map((r) => r.id));
+  const sample = useSample(timings);
+  const groups = useId();
 
-/** Every reciter's average page, loaded once the list opens. Each file is a
-    few kilobytes and is needed anyway the moment one is picked. */
-function usePaces() {
-  const [paces, setPaces] = useState<Record<string, number>>({});
-  useEffect(() => {
-    let live = true;
-    for (const r of reciters)
-      loadTimings(r.id).then(
-        (t) => live && setPaces((p) => ({ ...p, [r.id]: averagePage(t) })),
-        () => {},
-      );
-    return () => {
-      live = false;
-    };
-  }, []);
-  return paces;
+  return (
+    <div className="reciter-picker">
+      <p className="field-note">
+        اضغط زرّ التشغيل بجانب القارئ لتسمعه يتلو الفاتحة. والمدة تحت اسمه متوسط
+        تلاوته للصفحة.
+      </p>
+      {paceBands.map((band, i) => (
+        <section className="reciter-band" key={band.label}>
+          <h3 className="reciter-band-label" id={`${groups}-${i}`}>
+            أداء {band.label}
+          </h3>
+          <ul className="reciter-list" aria-labelledby={`${groups}-${i}`}>
+            {band.members.map((r) => {
+              const chosen = r.id === value;
+              const phase = sample.phase(r.id);
+              return (
+                <li
+                  key={r.id}
+                  className="reciter-row"
+                  data-chosen={chosen || undefined}
+                >
+                  <button
+                    type="button"
+                    className="reciter-choice"
+                    aria-pressed={chosen}
+                    onClick={() => onChange(r.id)}
+                  >
+                    <ReciterAvatar reciter={r} size={48} />
+                    <span className="reciter-text">
+                      <span className="reciter-name">{r.name}</span>
+                      <span className="reciter-meta">
+                        {r.style} · نحو {clock(r.secondsPerPage * 1000)} للصفحة
+                      </span>
+                    </span>
+                    <span className="reciter-check" aria-hidden="true">
+                      {chosen ? <Check size={18} /> : null}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-button reciter-sample"
+                    aria-label={`استمع إلى ${r.name} (${r.style}) يتلو الفاتحة`}
+                    aria-pressed={phase !== undefined}
+                    data-phase={phase}
+                    onClick={() => sample.toggle(r.id)}
+                  >
+                    {phase ? (
+                      <Square size={15} aria-hidden="true" />
+                    ) : (
+                      <Play size={17} aria-hidden="true" />
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
 }

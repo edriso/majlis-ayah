@@ -447,12 +447,13 @@
     background-color 400ms var(--ease),
     transform 400ms var(--ease);
 }
-.seat-photo {
+.seat-face {
+  display: grid;
+  place-items: center;
   width: 100%;
   height: 100%;
+  overflow: hidden;
   border-radius: 999px;
-  object-fit: cover;
-  filter: saturate(0.85);
 }
 /* Ticked in a round of repeat mode: a small gold seal on the seat, so a
    reciter keeps his face and a reader their letter. */
@@ -533,8 +534,9 @@
 .halaqa-seat[data-active] .seat-mark {
   color: var(--on-gold);
 }
-/* A reciter's photo stays a photo when lit: the gold is the ring. */
-.halaqa-seat[data-kind='reciter'][data-active] .seat-avatar {
+/* A reciter's photo stays a photo when lit: the gold is the ring. Shown as
+   his initial, he is lit like anyone else. */
+.halaqa-seat[data-active] .seat-avatar:has(.reciter-photo) {
   background: var(--surface-raised);
 }
 .halaqa-seat[data-active] .seat-name {

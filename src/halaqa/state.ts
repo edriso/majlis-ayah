@@ -23,6 +23,10 @@ import {
 export type TurnChange = 'manual' | 'reciter';
 export type Theme = 'burgundy' | 'green' | 'blue' | 'sand';
 export type View = 'quran' | 'balanced' | 'halaqa';
+/** How the reciters' photographs are shown. Some readers would rather not
+    look at faces, or not in a sitting with others; blurred keeps the
+    picture's place, hidden puts the reciter's initial in its stead. */
+export type Photos = 'show' | 'blur' | 'hide';
 
 /** Four seats: three readers and a reciter, or any mix. More would crowd
     the circle on a phone, and a bigger gathering has its own teacher. */
@@ -51,7 +55,7 @@ export type Config = {
   startPage: number;
 };
 
-export type Prefs = { theme: Theme; view: View };
+export type Prefs = { theme: Theme; view: View; photos: Photos };
 
 export type Session = {
   config: Config;
@@ -83,7 +87,11 @@ export const defaultConfig: Config = {
   startPage: 1,
 };
 
-export const defaultPrefs: Prefs = { theme: 'burgundy', view: 'balanced' };
+export const defaultPrefs: Prefs = {
+  theme: 'burgundy',
+  view: 'balanced',
+  photos: 'show',
+};
 
 export const initialState: State = {
   prefs: defaultPrefs,
@@ -326,6 +334,7 @@ export function reduce(state: State, action: Action): State {
 
 const themes: Theme[] = ['burgundy', 'green', 'blue', 'sand'];
 const views: View[] = ['quran', 'balanced', 'halaqa'];
+const photoModes: Photos[] = ['show', 'blur', 'hide'];
 
 const intIn = (v: unknown, min: number, max: number, fallback: number) =>
   typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max
@@ -398,6 +407,9 @@ export function sanitizeState(raw: unknown): State {
   const prefs: Prefs = {
     theme: themes.includes(p.theme as Theme) ? (p.theme as Theme) : 'burgundy',
     view: views.includes(p.view as View) ? (p.view as View) : 'balanced',
+    photos: photoModes.includes(p.photos as Photos)
+      ? (p.photos as Photos)
+      : 'show',
   };
   const config = sanitizeConfig(r.config);
   let session: Session | null = null;

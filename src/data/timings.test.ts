@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PAGE_COUNT, type Page } from './mushaf';
-import { reciters } from './reciters';
+import { paceLabel, reciters } from './reciters';
 import { averagePage, pageDuration, type Timings } from './timings';
 
 const timings = import.meta.glob<Timings>('./timings/*.json', {
@@ -14,8 +14,12 @@ const pages = import.meta.glob<Page>('./pages/*.json', {
 const load = (id: string) => timings[`./timings/${id}.json`];
 const page = (n: number) => pages[`./pages/${n}.json`];
 
-describe.each(reciters.map((r) => [r.id]))('%s', (id) => {
+describe.each(reciters.map((r) => [r.id, r]))('%s', (id, reciter) => {
   const t = load(id);
+
+  it('is listed at the pace his recording actually has', () => {
+    expect(reciter.secondsPerPage).toBeCloseTo(averagePage(t) / 1000, -0.5);
+  });
 
   it('times every page', () => {
     expect(t.pages).toHaveLength(PAGE_COUNT);
@@ -42,4 +46,16 @@ describe.each(reciters.map((r) => [r.id]))('%s', (id) => {
   it('plays from an https address with the surah in it', () => {
     expect(t.audio).toMatch(/^https:\/\/.+\{n\}\.mp3$/);
   });
+});
+
+it('lists the reciters from the most deliberate to the swiftest', () => {
+  const paces = reciters.map((r) => r.secondsPerPage);
+  expect(paces).toEqual([...paces].sort((a, b) => b - a));
+});
+
+it('bands the paces the way a halaqa speaks of them', () => {
+  expect(paceLabel(284)).toBe('متأنٍّ جدًّا');
+  expect(paceLabel(183)).toBe('متأنٍّ');
+  expect(paceLabel(151)).toBe('معتدل');
+  expect(paceLabel(108)).toBe('سريع');
 });

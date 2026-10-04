@@ -4,21 +4,12 @@ import {
   type Action,
   type Prefs,
   type Session,
-  type Theme,
-  type View,
 } from '@/halaqa/state';
-import { Choice } from './Choice';
+import { AppearanceFields } from './Appearance';
 import { HalaqaForm, type ReciterRequest } from './HalaqaForm';
 import { ReciterPicker } from './ReciterPicker';
 import { Sheet } from './Sheet';
 import { StartPicker } from './StartPicker';
-
-const THEMES: { value: Theme; label: string }[] = [
-  { value: 'burgundy', label: 'عنّابي' },
-  { value: 'green', label: 'أخضر' },
-  { value: 'blue', label: 'أزرق' },
-  { value: 'sand', label: 'رملي' },
-];
 
 /**
  * Everything about the halaqa that can change while it runs, applied as it is
@@ -103,37 +94,11 @@ export function SettingsPanel({
         <h3 id="settings-look" className="settings-heading">
           المظهر
         </h3>
-        <Choice<Theme>
-          legend="اللون"
-          variant="pills"
-          value={prefs.theme}
-          onChange={(theme) => dispatch({ type: 'prefs', prefs: { theme } })}
-          options={THEMES.map((t) => ({
-            value: t.value,
-            label: (
-              <>
-                <span
-                  className="swatch"
-                  data-swatch={t.value}
-                  aria-hidden="true"
-                />
-                {t.label}
-              </>
-            ),
-          }))}
+        <AppearanceFields
+          prefs={prefs}
+          onChange={(p) => dispatch({ type: 'prefs', prefs: p })}
+          withView={desktop}
         />
-        {desktop ? (
-          <Choice<View>
-            legend="العرض"
-            value={prefs.view}
-            onChange={(view) => dispatch({ type: 'prefs', prefs: { view } })}
-            options={[
-              { value: 'quran', label: 'المصحف' },
-              { value: 'balanced', label: 'متوازن' },
-              { value: 'halaqa', label: 'الحلقة' },
-            ]}
-          />
-        ) : null}
       </section>
 
       <section className="settings-section" aria-labelledby="settings-keys">
@@ -159,7 +124,7 @@ export function SettingsPanel({
             <dt>
               <kbd>مسافة</kbd>
             </dt>
-            <dd>إيقاف تلاوة الشيخ أو التوقيت مؤقتًا، واستئنافهما</dd>
+            <dd>إيقاف تلاوة الشيخ أو التوقيت أو الاستماع مؤقتًا، واستئنافها</dd>
           </div>
         </dl>
       </section>

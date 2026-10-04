@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react';
-import { ReadingScreen } from './components/ReadingScreen';
-import { SetupScreen } from './components/SetupScreen';
+import { PhotosContext } from './components/photos';
+import { ReadingScreen } from './screens/ReadingScreen';
+import { SetupScreen } from './screens/SetupScreen';
 import { useHalaqa } from './halaqa/useHalaqa';
-import { currentPage, isComplete, type Theme } from './halaqa/state';
+import { player } from './halaqa/useRecitation';
+import {
+  currentPage,
+  isComplete,
+  type Prefs,
+  type State,
+  type Theme,
+} from './halaqa/state';
 
 /** The colour the browser's own chrome takes on a phone, per theme. Kept in
     step with `--bg` in styles/tokens.css and with index.html. */
@@ -31,36 +39,45 @@ export function App() {
       ?.setAttribute('content', THEME_COLOR[theme]);
   }, [theme]);
 
+  // The press that opens a halaqa is the one a phone needs to let a
+  // reciter seated first, or later, be heard (see player.ts).
   const open = (go: () => void) => {
+    player.prime();
     go();
     setReading(true);
     window.scrollTo(0, 0);
   };
-
-  if (reading && state.session)
-    return (
-      <ReadingScreen
-        session={state.session}
-        prefs={state.prefs}
-        dispatch={dispatch}
-      />
-    );
-
-  // A new halaqa set up beside an unfinished one starts where that one
-  // stopped: the readers may change from one sitting to the next, the place
-  // in the Mushaf rarely does.
-  const { session } = state;
-  const initial =
-    session && !isComplete(session)
-      ? { ...state.config, startPage: currentPage(session) }
-      : state.config;
+  const setPrefs = (prefs: Partial<Prefs>) =>
+    dispatch({ type: 'prefs', prefs });
 
   return (
-    <SetupScreen
-      initial={initial}
-      saved={state.session}
-      onStart={(config) => open(() => dispatch({ type: 'start', config }))}
-      onResume={() => open(() => {})}
-    />
+    <PhotosContext value={state.prefs.photos}>
+      {reading && state.session ? (
+        <ReadingScreen
+          session={state.session}
+          prefs={state.prefs}
+          dispatch={dispatch}
+        />
+      ) : (
+        <SetupScreen
+          initial={initialConfig(state)}
+          saved={state.session}
+          prefs={state.prefs}
+          onPrefs={setPrefs}
+          onStart={(config) => open(() => dispatch({ type: 'start', config }))}
+          onResume={() => open(() => {})}
+        />
+      )}
+    </PhotosContext>
   );
+}
+
+/** A new halaqa set up beside an unfinished one starts where that one
+    stopped: the readers may change from one sitting to the next, the place
+    in the Mushaf rarely does. */
+function initialConfig(state: State) {
+  const { session } = state;
+  return session && !isComplete(session)
+    ? { ...state.config, startPage: currentPage(session) }
+    : state.config;
 }

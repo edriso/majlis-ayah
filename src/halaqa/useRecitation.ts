@@ -5,8 +5,14 @@ import { reciterById } from '@/data/reciters';
 import { loadTimings, recitationOf, type Timings } from '@/data/timings';
 import { Player, type Meta, type PlayerStatus } from './player';
 
-/** The app's one player, on the app's one audio element. */
+/** The app's one player for the halaqa's recitations, on the one audio
+    element every recitation plays on (see player.ts). */
 export const player = new Player(() => new Audio());
+
+/** A second player, only for hearing a reciter before choosing him. It is
+    only ever started by a tap, so it needs none of the first one's
+    unlocking, and it keeps off the lock screen. */
+const sampler = new Player(() => new Audio(), { session: false });
 
 export function usePlayer() {
   return useSyncExternalStore(
@@ -41,16 +47,20 @@ export function useTimings(ids: readonly string[]) {
   return { timings: loaded, retry: () => setAttempt((a) => a + 1) };
 }
 
-/** What the lock screen and a headset show for a recitation. */
-function metaFor(reciter: string, page: number): Meta {
+/** What the lock screen and a headset show for a recitation: the photo
+    only where the reader has photos shown. */
+function metaFor(reciter: string, page: number, showPhoto: boolean): Meta {
   const r = reciterById(reciter);
   return {
     title: `سورة ${surahOfPage(page).name} · الصفحة ${arabic(page)}`,
     artist: r.name,
-    artwork: r.photo
-      ? new URL(`${import.meta.env.BASE_URL}reciters/${r.photo}`, location.href)
-          .href
-      : undefined,
+    artwork:
+      r.photo && showPhoto
+        ? new URL(
+            `${import.meta.env.BASE_URL}reciters/${r.photo}`,
+            location.href,
+          ).href
+        : undefined,
   };
 }
 
@@ -74,6 +84,7 @@ export function useReciterTurn({
   onPage,
   onDone,
   onRetry,
+  showPhoto,
 }: {
   /** The reciter whose turn it is, or null on a reader's turn. */
   reciter: string | null;
@@ -85,6 +96,7 @@ export function useReciterTurn({
   onDone: () => void;
   /** Asks for timings that would not load. */
   onRetry: () => void;
+  showPhoto: boolean;
 }) {
   const state = usePlayer();
   const t = reciter ? timings[reciter] : undefined;
@@ -93,9 +105,9 @@ export function useReciterTurn({
 
   // The latest callbacks and page, read when the recitation starts and as
   // it goes, without making either restart it.
-  const latest = useRef({ page, onPage, onDone });
+  const latest = useRef({ page, onPage, onDone, showPhoto });
   useEffect(() => {
-    latest.current = { page, onPage, onDone };
+    latest.current = { page, onPage, onDone, showPhoto };
   });
 
   useEffect(() => {
@@ -105,7 +117,7 @@ export function useReciterTurn({
       start,
       onPage: (p) => latest.current.onPage(p),
       onDone: () => latest.current.onDone(),
-      meta: metaFor(reciter, start),
+      meta: metaFor(reciter, start, latest.current.showPhoto),
     });
     return () => player.stop(key);
   }, [key, reciter, t, pagesKey]);
@@ -142,39 +154,127 @@ export function useReciterTurn({
 
 /**
  * «استمع»: the halaqa's reciter reciting the open page, for a reader to
- * hear before reading it or to check a word after. It stops when the turn
- * or the page changes, so the reciter never carries on over the next
- * reader.
+ * hear before reading it or to check a word after. It pauses and resumes
+ * like any recording, and stops when the turn or the page changes, so the
+ * reciter never carries on over the next reader.
+ *
+ * If his timings are still loading when it is pressed, the button says so,
+ * and a recitation that arrives after the page or the turn has moved on, or
+ * after a second press, is dropped rather than played over whoever reads
+ * next.
  */
 export function useListen({
   reciter,
   turnKey,
   page,
   timings,
+  showPhoto,
 }: {
   reciter: string;
   turnKey: string;
   page: number;
   timings: Record<string, Timings | null>;
+  showPhoto: boolean;
 }) {
   const state = usePlayer();
   const key = `listen:${turnKey}:${reciter}:${page}`;
-  useEffect(() => () => player.stop(key), [key]);
+  const [pending, setPending] = useState<{
+    key: string;
+    status: 'loading' | 'error';
+  } | null>(null);
+  const live = useRef(key);
+  const attempt = useRef(0);
+  useEffect(() => {
+    live.current = key;
+    return () => player.stop(key);
+  }, [key]);
 
   const raw = state.key === key ? state.status : 'idle';
-  // Refused or finished, the button is simply ready to play again.
   const status: PlayerStatus =
-    raw === 'blocked' || raw === 'ended' || raw === 'paused' ? 'idle' : raw;
+    pending?.key === key
+      ? pending.status
+      : raw === 'blocked' || raw === 'ended'
+        ? 'idle'
+        : raw;
 
-  const play = () => {
-    const go = (t: Timings) =>
+  const start = () => {
+    const mine = ++attempt.current;
+    const go = (t: Timings) => {
+      if (live.current !== key || attempt.current !== mine) return;
+      setPending(null);
       player.play(key, recitationOf(t, [page]), {
-        meta: metaFor(reciter, page),
+        meta: metaFor(reciter, page, showPhoto),
       });
+    };
     const t = timings[reciter];
-    if (t) go(t);
-    else loadTimings(reciter).then(go, () => {});
+    if (t) return go(t);
+    setPending({ key, status: 'loading' });
+    loadTimings(reciter).then(go, () => {
+      if (live.current === key && attempt.current === mine)
+        setPending({ key, status: 'error' });
+    });
   };
 
-  return { status, play, stop: () => player.stop(key) };
+  /** Pauses it if it is sounding, and says whether it was. */
+  const pause = () => {
+    if (pending?.key === key && pending.status === 'loading') {
+      attempt.current++;
+      setPending(null);
+      return false;
+    }
+    if (raw !== 'playing' && raw !== 'loading') return false;
+    player.pause();
+    return true;
+  };
+  const resume = () => {
+    if (raw === 'paused') player.resume();
+  };
+
+  return {
+    status,
+    pause,
+    resume,
+    toggle: () => {
+      if (status === 'playing' || status === 'loading') pause();
+      else if (status === 'paused') resume();
+      else start();
+    },
+  };
+}
+
+/**
+ * A reciter's voice, heard before he is chosen: his al-Fatiha, which every
+ * reader knows, so the voices and their pace are heard side by side on the
+ * same words. One at a time: a second press stops it, another reciter's
+ * press replaces it, closing the list ends it, and the halaqa's own
+ * recitation pauses while it plays and stops it if it starts again.
+ */
+export function useSample(timings: Record<string, Timings | null>) {
+  const state = useSyncExternalStore(
+    sampler.subscribe,
+    sampler.getState,
+    sampler.getState,
+  );
+  const main = usePlayer();
+  useEffect(() => () => sampler.stop(), []);
+  useEffect(() => {
+    if (main.status === 'playing') sampler.stop();
+  }, [main.status]);
+
+  const phase = (id: string) =>
+    state.key === `sample:${id}` &&
+    (state.status === 'playing' || state.status === 'loading')
+      ? state.status
+      : undefined;
+
+  return {
+    phase,
+    toggle: (id: string) => {
+      if (phase(id)) return sampler.stop();
+      const t = timings[id];
+      if (!t) return;
+      player.pause();
+      sampler.play(`sample:${id}`, recitationOf(t, [1]));
+    },
+  };
 }

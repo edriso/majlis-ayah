@@ -309,18 +309,6 @@ function Members({
         <button
           type="button"
           className="member-add-button"
-          onClick={() => add('person')}
-          aria-disabled={full}
-        >
-          <UserPlus size={20} aria-hidden="true" />
-          <span className="member-add-text">
-            <span className="member-add-label">أضف قارئًا</span>
-            <span className="member-add-hint">يقرأ بنفسه</span>
-          </span>
-        </button>
-        <button
-          type="button"
-          className="member-add-button"
           onClick={() => {
             if (full) return;
             onPickReciter({
@@ -337,6 +325,18 @@ function Members({
           <span className="member-add-text">
             <span className="member-add-label">أضف شيخًا</span>
             <span className="member-add-hint">تُسمَع تلاوته في دوره</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          className="member-add-button"
+          onClick={() => add('person')}
+          aria-disabled={full}
+        >
+          <UserPlus size={20} aria-hidden="true" />
+          <span className="member-add-text">
+            <span className="member-add-label">أضف قارئًا</span>
+            <span className="member-add-hint">يقرأ بنفسه</span>
           </span>
         </button>
       </div>

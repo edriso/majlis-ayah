@@ -70,6 +70,7 @@ export function useTurnClock({
     left: clock.key === turnKey ? clock.left : duration,
     total: duration,
     paused: clock.paused,
-    toggle: () => setClock((c) => ({ ...c, paused: !c.paused })),
+    pause: () => setClock((c) => ({ ...c, paused: true })),
+    resume: () => setClock((c) => ({ ...c, paused: false })),
   };
 }

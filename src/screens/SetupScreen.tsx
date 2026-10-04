@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { arabic } from '@/data/arabic';
 import { surahOfPage } from '@/data/mushaf';
@@ -9,13 +9,15 @@ import {
   memberName,
   planOf,
   type Config,
+  type Prefs,
   type Session,
 } from '@/halaqa/state';
-import { HalaqaForm, type ReciterRequest } from './HalaqaForm';
-import { LogoMark } from './Logo';
-import { ReciterPicker } from './ReciterPicker';
-import { Sheet } from './Sheet';
-import { StartPicker } from './StartPicker';
+import { AppearanceFields } from '@/components/Appearance';
+import { HalaqaForm, type ReciterRequest } from '@/components/HalaqaForm';
+import { LogoMark } from '@/components/Logo';
+import { ReciterPicker } from '@/components/ReciterPicker';
+import { Sheet } from '@/components/Sheet';
+import { StartPicker } from '@/components/StartPicker';
 
 /**
  * The first screen, every time the app opens: the name, one line saying what
@@ -29,20 +31,36 @@ import { StartPicker } from './StartPicker';
 export function SetupScreen({
   initial,
   saved,
+  prefs,
+  onPrefs,
   onStart,
   onResume,
 }: {
   initial: Config;
   saved: Session | null;
+  prefs: Prefs;
+  onPrefs: (prefs: Partial<Prefs>) => void;
   onStart: (config: Config) => void;
   onResume: () => void;
 }) {
   const [config, setConfig] = useState<Config>(initial);
   const [showForm, setShowForm] = useState(!saved);
   const [picking, setPicking] = useState<ReciterRequest | null>(null);
+  const [looking, setLooking] = useState(false);
 
   return (
     <main className="setup" id="main">
+      {/* The look of the app, before a halaqa starts: its colour, and
+          whether the reciters' faces are shown, blurred or hidden, which
+          some would settle before the first photo appears. */}
+      <button
+        type="button"
+        className="icon-button setup-appearance"
+        aria-label="المظهر"
+        onClick={() => setLooking(true)}
+      >
+        <Settings size={20} aria-hidden="true" />
+      </button>
       <header className="setup-intro">
         <LogoMark size={64} />
         <h1 className="setup-title">
@@ -108,6 +126,15 @@ export function SetupScreen({
           ) : null}
         </form>
       )}
+
+      <Sheet
+        open={looking}
+        onOpenChange={setLooking}
+        title="المظهر"
+        description="لون التطبيق، وكيف تظهر صور القرّاء."
+      >
+        <AppearanceFields prefs={prefs} onChange={onPrefs} />
+      </Sheet>
 
       <Sheet
         open={picking !== null}

@@ -6,7 +6,6 @@ import {
   Pause,
   Play,
   RotateCcw,
-  Square,
   Undo2,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -261,40 +260,74 @@ export function TimerButton({
   );
 }
 
-/** «استمع»: the open page in the halaqa's reciter's voice. */
+/** «استمع»: the open page in the halaqa's reciter's voice, paused and
+    resumed with the same button. */
 export function ListenButton({
   status,
   page,
-  onPlay,
-  onStop,
+  onClick,
 }: {
   status: PlayerStatus;
   page: string;
-  onPlay: () => void;
-  onStop: () => void;
+  onClick: () => void;
 }) {
-  const on = status === 'playing' || status === 'loading';
+  const view: Record<
+    PlayerStatus,
+    { icon: ReactNode; text: string; label: string }
+  > = {
+    idle: {
+      icon: <Headphones size={20} aria-hidden="true" />,
+      text: 'استمع',
+      label: `استمع إلى ${page}`,
+    },
+    ended: {
+      icon: <Headphones size={20} aria-hidden="true" />,
+      text: 'استمع',
+      label: `استمع إلى ${page}`,
+    },
+    blocked: {
+      icon: <Headphones size={20} aria-hidden="true" />,
+      text: 'استمع',
+      label: `استمع إلى ${page}`,
+    },
+    loading: {
+      icon: <LoaderCircle size={20} aria-hidden="true" className="spin" />,
+      text: 'جارٍ التحميل…',
+      label: 'إيقاف الاستماع',
+    },
+    playing: {
+      icon: <Pause size={20} aria-hidden="true" />,
+      text: 'إيقاف مؤقت',
+      label: 'إيقاف الاستماع مؤقتًا',
+    },
+    paused: {
+      icon: <Play size={20} aria-hidden="true" />,
+      text: 'متابعة',
+      label: `متابعة الاستماع إلى ${page}`,
+    },
+    error: {
+      icon: <RotateCcw size={20} aria-hidden="true" />,
+      text: 'تعذّر التشغيل',
+      label: `تعذّر الاستماع إلى ${page}، أعد المحاولة`,
+    },
+  };
+  const v = view[status];
   return (
     <button
       type="button"
       className="action-secondary"
-      data-active={on || undefined}
-      onClick={on ? onStop : onPlay}
-      aria-label={on ? 'إيقاف الاستماع' : `استمع إلى ${page}`}
+      data-active={
+        status === 'playing' ||
+        status === 'loading' ||
+        status === 'paused' ||
+        undefined
+      }
+      onClick={onClick}
+      aria-label={v.label}
     >
-      {on ? (
-        <Square size={18} aria-hidden="true" />
-      ) : (
-        <Headphones size={20} aria-hidden="true" />
-      )}
+      {v.icon}
       <span className="action-secondary-label" aria-hidden="true">
-        {status === 'loading'
-          ? 'جارٍ التحميل…'
-          : status === 'playing'
-            ? 'إيقاف'
-            : status === 'error'
-              ? 'تعذّر التشغيل'
-              : 'استمع'}
+        {v.text}
       </span>
     </button>
   );

@@ -1,11 +1,15 @@
-/* The reciters whose pace a turn can be timed by, and whose recording of a
-   page can be played. Each is a Quran.com recitation (`qdc`), because that
-   source carries per-ayah timestamps and per-word segments for whole surah
-   files, which is what lets a page be measured and played on its own.
-   `npm run build:timings` turns them into src/data/timings/<id>.json.
+/* The reciters whose pace a turn can be timed by, whose recording of a
+   page can be played, and who can take a seat in the circle. Each is a
+   Quran.com recitation (`qdc`), because that source carries per-ayah
+   timestamps for whole surah files, which is what lets a page be measured
+   and played on its own. `npm run build:timings` turns them into
+   src/data/timings/<id>.json.
 
-   Ordered from the most deliberate to the swiftest: a halaqa reading at a
-   teaching pace wants the top of the list.
+   Ordered from the most deliberate to the swiftest, by `secondsPerPage`:
+   a halaqa reading at a teaching pace wants the top of the list. That
+   number is the reciter's average page in those timings, written here so
+   the list can show it and band it without loading ten files first;
+   timings.test.ts checks it against the files.
 
    `photo` is a file in public/reciters, cropped from Wikimedia Commons; NOTICE
    names the source and licence of each. A reciter with no freely licensed
@@ -20,6 +24,8 @@ export type Reciter = {
   short: string;
   /** Style of the recording, shown under the name. */
   style: string;
+  /** His average Mushaf page, in seconds. */
+  secondsPerPage: number;
   photo?: string;
 };
 
@@ -30,15 +36,8 @@ export const reciters: readonly Reciter[] = [
     name: 'محمود خليل الحصري',
     short: 'الحصري',
     style: 'المصحف المعلّم',
+    secondsPerPage: 284,
     photo: 'husary.webp',
-  },
-  {
-    id: 'minshawi',
-    qdc: 9,
-    name: 'محمد صديق المنشاوي',
-    short: 'المنشاوي',
-    style: 'مرتّل',
-    photo: 'minshawi.webp',
   },
   {
     id: 'husary',
@@ -46,6 +45,7 @@ export const reciters: readonly Reciter[] = [
     name: 'محمود خليل الحصري',
     short: 'الحصري',
     style: 'مرتّل',
+    secondsPerPage: 254,
     photo: 'husary.webp',
   },
   {
@@ -54,6 +54,7 @@ export const reciters: readonly Reciter[] = [
     name: 'عبد الباسط عبد الصمد',
     short: 'عبد الباسط',
     style: 'مرتّل',
+    secondsPerPage: 183,
     photo: 'abdulbasit.webp',
   },
   {
@@ -62,21 +63,17 @@ export const reciters: readonly Reciter[] = [
     name: 'مشاري راشد العفاسي',
     short: 'العفاسي',
     style: 'مرتّل',
+    secondsPerPage: 176,
     photo: 'alafasy.webp',
   },
   {
-    id: 'rifai',
-    qdc: 5,
-    name: 'هاني الرفاعي',
-    short: 'الرفاعي',
+    id: 'minshawi',
+    qdc: 9,
+    name: 'محمد صديق المنشاوي',
+    short: 'المنشاوي',
     style: 'مرتّل',
-  },
-  {
-    id: 'shatri',
-    qdc: 4,
-    name: 'أبو بكر الشاطري',
-    short: 'الشاطري',
-    style: 'مرتّل',
+    secondsPerPage: 172,
+    photo: 'minshawi.webp',
   },
   {
     id: 'dosari',
@@ -84,7 +81,24 @@ export const reciters: readonly Reciter[] = [
     name: 'ياسر الدوسري',
     short: 'الدوسري',
     style: 'مرتّل',
+    secondsPerPage: 154,
     photo: 'dosari.webp',
+  },
+  {
+    id: 'shatri',
+    qdc: 4,
+    name: 'أبو بكر الشاطري',
+    short: 'الشاطري',
+    style: 'مرتّل',
+    secondsPerPage: 154,
+  },
+  {
+    id: 'rifai',
+    qdc: 5,
+    name: 'هاني الرفاعي',
+    short: 'الرفاعي',
+    style: 'مرتّل',
+    secondsPerPage: 151,
   },
   {
     id: 'sudais',
@@ -92,6 +106,7 @@ export const reciters: readonly Reciter[] = [
     name: 'عبد الرحمن السديس',
     short: 'السديس',
     style: 'مرتّل',
+    secondsPerPage: 125,
     photo: 'sudais.webp',
   },
   {
@@ -100,6 +115,7 @@ export const reciters: readonly Reciter[] = [
     name: 'سعود الشريم',
     short: 'الشريم',
     style: 'مرتّل',
+    secondsPerPage: 108,
     photo: 'shuraim.webp',
   },
 ];
@@ -107,5 +123,17 @@ export const reciters: readonly Reciter[] = [
 export const defaultReciter = 'husary';
 
 export function reciterById(id: string): Reciter {
-  return reciters.find((r) => r.id === id) ?? reciters[2];
+  return (
+    reciters.find((r) => r.id === id) ??
+    reciters.find((r) => r.id === defaultReciter)!
+  );
+}
+
+/** How deliberately a reciter recites, in the words a halaqa uses, from his
+    average page: the band the list groups him under. */
+export function paceLabel(secondsPerPage: number) {
+  if (secondsPerPage >= 240) return 'متأنٍّ جدًّا';
+  if (secondsPerPage >= 165) return 'متأنٍّ';
+  if (secondsPerPage >= 140) return 'معتدل';
+  return 'سريع';
 }
