@@ -22,6 +22,10 @@ const loading = new Map<number, Promise<void>>();
 export function loadPageFont(p: number): Promise<void> {
   let pending = loading.get(p);
   if (!pending) {
+    // No FontFace (an old browser, a test runner): the page falls back to
+    // its readable text, which is what a failed load does too.
+    if (typeof FontFace === 'undefined')
+      return Promise.reject(new Error('FontFace is not supported'));
     const face = new FontFace(pageFontFamily(p), `url(${FONT_URL(p)})`, {
       display: 'block',
     });

@@ -48,7 +48,7 @@ type ApiVerse = {
   juz_number: number;
   hizb_number: number;
   rub_el_hizb_number: number;
-  sajdah_number: number | null;
+  text_uthmani: string;
   words: ApiWord[];
 };
 type ApiChapter = {
@@ -111,7 +111,9 @@ for (const word of [...words.values()].sort((a, b) => a.id - b.id)) {
   // The end-of-ayah word is the ayah's number. In the readable text it is
   // kept as a number in brackets so a screen reader announces it as one.
   const text =
-    word.char_type_name === 'end' ? `﴿${word.text_uthmani}﴾` : word.text_uthmani;
+    word.char_type_name === 'end'
+      ? `﴿${word.text_uthmani}﴾`
+      : word.text_uthmani;
   line.x = line.x ? `${line.x} ${text}` : text;
 }
 
@@ -169,7 +171,9 @@ const surahStart = new Map<number, number>();
 
 for (let p = 1; p <= PAGES; p++) {
   const lines = grid[p].slice(1, lineCount(p) + 1) as Line[];
-  const keys = lines.flatMap((l) => (l.t === 'text' ? l.w.map(([, k]) => k) : []));
+  const keys = lines.flatMap((l) =>
+    l.t === 'text' ? l.w.map(([, k]) => k) : [],
+  );
   const unique = [...new Set(keys)];
   for (const l of lines) if (l.t === 'surah') surahStart.set(l.s, p);
 
@@ -177,9 +181,15 @@ for (let p = 1; p <= PAGES; p++) {
   // printed Mushaf names it in its margin; a page whose top line finishes the
   // previous page's ayah still belongs to that ayah's juz.
   const first = verseOf.get(unique[0])!;
-  const sajdah = unique.filter((k) => verseOf.get(k)!.sajdah_number !== null);
+  // By the ۩ the print sets in the ayah, not the API's `sajdah_number`,
+  // which leaves out al-Hajj 77: the Mushaf marks fifteen and so do we.
+  const sajdah = unique.filter((k) =>
+    verseOf.get(k)!.text_uthmani.includes('\u06E9'),
+  );
   const surahs = [...new Set(unique.map((k) => Number(k.split(':')[0])))];
-  const rubs = [...new Set(unique.map((k) => verseOf.get(k)!.rub_el_hizb_number))];
+  const rubs = [
+    ...new Set(unique.map((k) => verseOf.get(k)!.rub_el_hizb_number)),
+  ];
 
   pageMeta.push([surahs[0], first.juz_number, first.rub_el_hizb_number]);
   await writeFile(
