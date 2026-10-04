@@ -21,10 +21,11 @@ There are two screens and no router:
   who sits in the circle and in what order, people and reciters, each moved
   up or down with a button; continue or repeat; pages per turn; manual or
   reciter-timed turns. A halaqa left open is offered first, as one card.
-- **The reading screen** (`ReadingScreen`). The Mushaf page, the circle
-  beside it (which is also the reading order: every seat says what it does
-  next), and one primary button. On a person's turn it passes the turn on;
-  on a reciter's turn it pauses and resumes his recitation.
+- **The reading screen** (`ReadingScreen`). The Mushaf page, fitted whole to
+  the screen, or the circle (which is also the reading order: every seat
+  says what it does next), one button in the top bar switching between
+  them, and under both one primary button. On a person's turn it passes the
+  turn on; on a reciter's turn it pauses and resumes his recitation.
 
 The brief the app was built from asks for this order of importance on every
 screen, and every decision should protect it: **1. the Quran, 2. the current
@@ -214,6 +215,18 @@ Built once by scripts, committed, never fetched from an API at run time.
   (`aria-pressed`), not radios: arrowing through a radio group selects as it
   goes, and choosing closes the list.
 
+## Settings that belong to the device
+
+`prefs` in `state.ts`, kept apart from the halaqa (`config`) because they
+are how this device looks and sounds, not how the circle reads: the theme,
+the reciters' photos, the speed of recitations (0.75, 1 or 1.25; beyond
+them tajweed suffers, so there is no slider), how many times «استمع» recites
+the page, and a soft tone (`src/halaqa/chime.ts`, Web Audio, never on the
+recitations' element) when a turn passes on its own. They are in the
+settings and behind the gear on the start screen. The halaqa's own
+«مهلة الدور» (a timed reader's turn ×1, ×1.25 or ×1.5 of the reciter's
+time) is in `config`, since it is the circle's choice.
+
 ## Photos
 
 Reciters' photographs follow `prefs.photos`: shown, blurred, or hidden. Some
@@ -245,39 +258,40 @@ README.
 
 ## Layout
 
-The reading screen has three bands (`src/styles/reading.css`): phone under
-760px (the page and the turn; the circle opens in a sheet), tablet to 1099px
-(the page and a narrow side column), desktop from 1100px (the circle and the
-page, sized by the chosen view). There is no third column: the circle is
-the reading order, so a separate list would only repeat it.
+The reading screen is the same on every screen (`src/styles/reading.css`):
+one column the height of the window, never scrolled. A top bar says whose
+turn it is and opens the jump; a button in it switches the main area
+between the Mushaf page and the circle (`showing` in `ReadingScreen`); the
+action bar stays under both. There is no reading-order list: the circle is
+the order, every seat saying what it does next.
 
-On a desktop the page's column is as wide as the page and its two turning
-arrows and no wider, and the grid is centred, so the circle and the page sit
-together in the middle of the screen however wide it is. The views only move
-room between them (`--side`, `--stage-h`).
+The page fits its room whole. The room (`.mushaf-stage`) is a size
+container, and the page is `min(100cqw, 100cqh / --page-height)` wide, so
+it is as large as the room allows in both directions with no breakpoint
+deciding it. Only where that would make it narrower than 220px (a phone on
+its side) does it keep 220px and the room scroll. Under 700px of height the
+row of page arrows gives its room to the page. The circle's room is a size
+container too, and the circle and its seats, names and marks are measured
+in it, so it grows from a phone to a wall.
 
-The Mushaf page is sized by width alone. Everything inside it is in `cqi`, so
-it is a fixed shape, `--page-height` times its width, declared in
-`tokens.css` and itemised in `mushaf.css`. The layout gives it a height to fit
-(`--stage-h`) and the page takes `min(column, stage-h / page-height)`. Change
-anything inside the page and you must update `--page-height`, or the page will
-overflow or float in its frame. The circle is a size container too: its
-centre and seats scale with the circle actually drawn.
+Everything inside the page is in `cqi`, so the page is a fixed shape,
+`--page-height` times its width, declared in `tokens.css` and itemised in
+`mushaf.css`. Change anything inside the page and you must update
+`--page-height`, or it will overflow or float in its frame.
 
-The action bar is a size container. Below 560px of its own width (a phone,
-the page column in the Halaqa view, a small desktop) the secondary actions
-drop their visible words and keep them as accessible names, so the main
-button keeps its own. Under 400px of viewport the main button says «تمّ —
-التالي» instead of «تمّ — القارئ التالي», the reciter's button drops his
-photo, and the top line, when it carries a clock, says «ص ٢٤» for «الصفحة
-٢٤». `.reading-quran` has an explicit `minmax(0, 1fr)` track so the bar can
-never push the page wider than the screen, which it once did.
+The action bar is a size container. Below 560px of its own width (a phone)
+the secondary actions drop their visible words and keep them as accessible
+names, so the main button keeps its own. Under 400px of viewport the main
+button says «تمّ — التالي» instead of «تمّ — القارئ التالي», the reciter's
+button drops his photo, and the top line, when it carries a clock, says
+«ص ٢٤» for «الصفحة ٢٤».
 
-Measured in Chrome over all three views at 320, 360, 390, 760, 900, 1100,
-1280, 1440, 1920 and 2560 wide, in a timed reader's turn and in a reciter's
-turn (the two widest bars): no horizontal overflow, no seat outside its
-column, and the main button never under 140px with its words whole. If you
-add a control to the bar, measure again.
+Measured in Chrome at 320×568, 360×640, 375×667, 390×844, 820×1180,
+1100×700, 1440×900 and 2560×1440, on both sides of the switch, in a timed
+reader's turn and a reciter's: the page whole with nothing scrolled, no
+horizontal overflow, no seat off the screen, and the main button never
+under 140px with its words whole. If you add anything to the bar or the top
+line, measure again.
 
 ## Themes
 

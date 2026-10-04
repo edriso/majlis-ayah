@@ -44,12 +44,12 @@ npm run build
 | the circle, which is also the order        | `src/components/HalaqaCircle.tsx`             |
 | how a recitation plays                     | `src/halaqa/player.ts`, `useRecitation.ts`    |
 | the reciter list, its samples and paces    | `src/components/ReciterPicker.tsx`, `src/data/reciters.ts` |
-| colour and photos settings                 | `src/components/Appearance.tsx`               |
+| colour, photos and sound settings          | `src/components/Preferences.tsx`              |
 | the settings drawer                        | `src/components/SettingsPanel.tsx`            |
 | how a Mushaf page is drawn                 | `src/mushaf/MushafPage.tsx`, `styles/mushaf.css` |
 | the reciters                               | `src/data/reciters.ts`, then `npm run build:timings` |
 | colours and themes                         | `src/styles/tokens.css` (contrast is tested)  |
-| layout per screen size and view            | `src/styles/reading.css`                      |
+| the reading screen's layout                | `src/styles/reading.css`                      |
 | Arabic numbers and counted nouns           | `src/data/arabic.ts`                          |
 
 ## A first change, end to end
@@ -63,9 +63,9 @@ Say you want a fifth seat.
    (`HalaqaCircle.tsx`), spaced evenly and starting at the near right.
 3. Add a case to `src/halaqa/state.test.ts` that seats five and goes round
    them, and run `npm test`.
-4. Look at it on a phone width (320px and 390px) and at 1440px, in all
-   three views: seat names on the upper arc sit above the circle and must
-   not leave its column.
+4. Look at the circle on a phone (320px and 390px wide) and at 1440px:
+   seat names on the upper arc sit above the circle and must stay on the
+   screen.
 5. Update the README's feature list, which is in Arabic. If you do not write
    Arabic, say so in the pull request and someone will.
 

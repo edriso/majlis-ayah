@@ -67,12 +67,15 @@ the turn counter moves to a fresh round, `(round + 1) * members + seat`, and
 is re-anchored at the page being read, so the modulo names the right member
 from here on and the circle goes round in its new order.
 
-In repeat mode **nobody misses the page**. If the change seats anyone ahead
-of the reader who is still to read it (moved up, or newly added), the page
-starts over from the first seat. If everyone ahead has read it, or was
-passed over by an earlier jump, the reader carries on, and the round is
-anchored so those ahead keep their ticks (or their «لم يقرأها»).
-`state.test.ts` has a case for each.
+In repeat mode **nobody misses a page**. The round keeps its first page
+(not the page open, which in a turn of two pages may be its second). If the
+reader who left sat last, everyone else has read the round's pages and the
+circle moves on to the next. Otherwise, if anyone now seated ahead of the
+reader is still to read them (moved up, newly added, or the turn grown to a
+page they did not read), the pages start over from the first seat. If not,
+the reader carries on on the same page, and the round is anchored so those
+ahead keep their ticks (or their «لم يقرأها»). `state.test.ts` has a case
+for each.
 
 ## A reciter's turn
 
@@ -114,9 +117,20 @@ stream from QuranicAudio and are never cached by the service worker.
 reciter's turn it pauses him. Space does the same.
 
 **Samples.** The reciter list plays a reciter's al-Fatiha on a second
-`Player` (`useSample`), only ever started by a tap, and kept off the lock
-screen. It pauses the halaqa's recitation while it plays and stops if that
-recitation starts again: one voice at a time.
+`Player` (`useSample`), only ever started by a tap, kept off the lock
+screen, and at the reciter's own speed so paces compare. It pauses the
+halaqa's recitation while it plays and carries it on when it stops, and it
+stops if that recitation starts again some other way: one voice at a time.
+
+**Speed.** `player.setRate()` sets both the element's rate and its default
+(a new source resets the rate to the default), and the timer that stops a
+stretch on its last word divides by it. A reciter's time left is shown in
+clock time, not recording time.
+
+**The tone.** A turn that passes on its own, a timed one running out or a
+reciter finishing, rings `chime()` if the reader keeps it on. It is Web
+Audio, woken by the same taps that prime the player (`wakeSound()`), and
+never touches the recitations' element.
 
 A recording's page stretches are played through without a seek when the
 next starts within three seconds of where the last ended, or before it: one
