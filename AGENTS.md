@@ -67,6 +67,14 @@ node scripts/make-assets.ts   # icons and share card, in headless Chrome
 Both data scripts cache every API response under `.cache/` (ignored by git)
 and take `--offline` to rebuild from that cache alone.
 
+One command checks something only the network can tell: that the audio
+host serves every surah file of every reciter. Run it after
+`build:timings`, and first whenever a recitation will not play.
+
+```sh
+npm run check:audio      # one byte of each of the 1,140 surah files
+```
+
 ## Where things are
 
 ```
@@ -174,10 +182,11 @@ Built once by scripts, committed, never fetched from an API at run time.
   deliberate to the swiftest by `secondsPerPage`, his average page, which
   the list shows and bands (`paceLabel()`: متأنٍّ جدًّا، متأنٍّ، معتدل، سريع).
   Adding one: add the entry with its Quran.com `qdc` id, run
-  `npm run build:timings`, set `secondsPerPage` to what the test reports, and
-  add a photo only if a freely licensed one exists (and its NOTICE entry);
-  otherwise the avatar shows his initial. `timings.test.ts` checks every page
-  of every reciter, his `secondsPerPage` against his file, and the order.
+  `npm run build:timings` and `npm run check:audio`, set `secondsPerPage`
+  to what the test reports, and add a photo only if a freely licensed one
+  exists (and its NOTICE entry); otherwise the avatar shows his initial.
+  `timings.test.ts` checks every page of every reciter, his
+  `secondsPerPage` against his file, and the order.
 
 ## Style
 

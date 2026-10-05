@@ -47,7 +47,7 @@ npm run build
 | colour, photos and sound settings          | `src/components/Preferences.tsx`              |
 | the settings drawer                        | `src/components/SettingsPanel.tsx`            |
 | how a Mushaf page is drawn                 | `src/mushaf/MushafPage.tsx`, `styles/mushaf.css` |
-| the reciters                               | `src/data/reciters.ts`, then `npm run build:timings` |
+| the reciters                               | `src/data/reciters.ts`, then `npm run build:timings` and `npm run check:audio` |
 | colours and themes                         | `src/styles/tokens.css` (contrast is tested)  |
 | the reading screen's layout                | `src/styles/reading.css`                      |
 | Arabic numbers and counted nouns           | `src/data/arabic.ts`                          |

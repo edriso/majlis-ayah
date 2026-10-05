@@ -14,7 +14,8 @@
     "format": "oxfmt",
     "test": "vitest run",
     "build:mushaf": "node scripts/build-mushaf.ts",
-    "build:timings": "node scripts/build-timings.ts"
+    "build:timings": "node scripts/build-timings.ts",
+    "check:audio": "node scripts/check-audio.ts"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

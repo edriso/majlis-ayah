@@ -16,13 +16,18 @@
    (`توقيت القارئ`) adds the stretches up into the length of a turn, and the
    listen button plays exactly those stretches of the surah file.
 
-   The source is Quran.com's per-surah recordings with per-ayah timestamps.
+   The source is Quran.com's per-surah recordings with per-ayah timestamps,
+   asked for as its own site asks (`segments=true`; without it the API
+   leaves the timestamps out). The address kept for a reciter's files is a
+   template (see src/data/audio.ts), written only if it gives back the
+   API's own address for every one of the 114 surahs.
    The Madani Mushaf ends every page on the end of an ayah, so a page is
    always a run of whole ayat and its length is theirs, with no ayah to cut
    in two. The script checks that rather than assuming it. */
 
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { surahFile } from '../src/data/audio.ts';
 import { reciters } from '../src/data/reciters.ts';
 
 const API = 'https://api.qurancdn.com/api/qdc/audio/reciters';
@@ -43,7 +48,7 @@ async function chapter(qdc: number, n: number): Promise<AudioFile> {
   if (!existsSync(path)) {
     if (offline)
       throw new Error(`${path} is not cached and --offline was given`);
-    const url = `${API}/${qdc}/audio_files?chapter=${n}`;
+    const url = `${API}/${qdc}/audio_files?chapter=${n}&segments=true`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`${url}: ${res.status}`);
     await mkdir(`${CACHE}/${qdc}`, { recursive: true });
@@ -52,7 +57,23 @@ async function chapter(qdc: number, n: number): Promise<AudioFile> {
   const { audio_files } = JSON.parse(await readFile(path, 'utf8')) as {
     audio_files: AudioFile[];
   };
-  return audio_files[0];
+  const file = audio_files[0];
+  if (!file?.verse_timings)
+    throw new Error(`${path} has no verse timings; delete it to fetch again`);
+  return file;
+}
+
+/** Surah 1's address with its number made a placeholder: the one surah
+    that tells the two namings apart (1.mp3, 001.mp3), which agree from
+    100 on. */
+function templateOf(url: string) {
+  for (const [name, placeholder] of [
+    ['001', '{nnn}'],
+    ['1', '{n}'],
+  ])
+    if (url.endsWith(`/${name}.mp3`))
+      return `${url.slice(0, -`${name}.mp3`.length)}${placeholder}.mp3`;
+  throw new Error(`unexpected address for surah 1: ${url}`);
 }
 
 /* Where each ayah's words sit: for every verse, the page of each of its
@@ -90,10 +111,11 @@ for (const reciter of reciters) {
 
   for (let n = 1; n <= 114; n++) {
     const file = await chapter(reciter.qdc, n);
-    const template = file.audio_url.replace(/\/\d+\.mp3$/, '/{n}.mp3');
-    if (!template.includes('{n}') || (urlTemplate && template !== urlTemplate))
-      throw new Error(`${reciter.id}: unexpected audio url ${file.audio_url}`);
-    urlTemplate = template;
+    urlTemplate ||= templateOf(file.audio_url);
+    if (surahFile(urlTemplate, n) !== file.audio_url)
+      throw new Error(
+        `${reciter.id}: surah ${n} is at ${file.audio_url}, not ${surahFile(urlTemplate, n)}`,
+      );
 
     for (const v of file.verse_timings) {
       const wordPages = pagesOfWords.get(v.verse_key);
