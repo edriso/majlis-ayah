@@ -3,6 +3,7 @@
    per-ayah timestamps, one small file per reciter, loaded only when a halaqa
    is timed by that reciter or listens to him. */
 
+import { surahFile } from './audio';
 import { PAGE_COUNT } from './mushaf';
 
 /** [surah, fromMs, toMs]: a stretch of the reciter's recording of that surah. */
@@ -18,7 +19,8 @@ export type Segment = {
 };
 
 export type Timings = {
-  /** The surah file's address, with `{n}` for the surah number. */
+  /** The surah file's address, with `{n}` or `{nnn}` for the surah
+      number (see audio.ts). */
   audio: string;
   pages: Stretch[][];
 };
@@ -54,7 +56,7 @@ export const averagePage = (t: Timings) =>
   t.pages.reduce((s, _, i) => s + pageDuration(t, i + 1), 0) / PAGE_COUNT;
 
 export const surahAudioUrl = (t: Timings, surah: number) =>
-  t.audio.replace('{n}', String(surah));
+  surahFile(t.audio, surah);
 
 /** A reciter's recitation of some pages, as the stretches to play in order:
     one per page, or two where a page holds the end of one surah and the

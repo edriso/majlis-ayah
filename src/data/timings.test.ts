@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { PAGE_COUNT, type Page } from './mushaf';
 import { paceLabel, reciters } from './reciters';
-import { averagePage, pageDuration, type Timings } from './timings';
+import { surahFile } from './audio';
+import {
+  averagePage,
+  pageDuration,
+  surahAudioUrl,
+  type Timings,
+} from './timings';
 
 const timings = import.meta.glob<Timings>('./timings/*.json', {
   eager: true,
@@ -44,8 +50,29 @@ describe.each(reciters.map((r) => [r.id, r]))('%s', (id, reciter) => {
   });
 
   it('plays from an https address with the surah in it', () => {
-    expect(t.audio).toMatch(/^https:\/\/.+\{n\}\.mp3$/);
+    expect(t.audio).toMatch(/^https:\/\/.+\/\{(n|nnn)\}\.mp3$/);
   });
+});
+
+it('names a surah file by the bare number or by three digits', () => {
+  expect(surahFile('https://host/a/{n}.mp3', 68)).toBe('https://host/a/68.mp3');
+  expect(surahFile('https://host/a/{nnn}.mp3', 1)).toBe(
+    'https://host/a/001.mp3',
+  );
+  expect(surahFile('https://host/a/{nnn}.mp3', 68)).toBe(
+    'https://host/a/068.mp3',
+  );
+  expect(surahFile('https://host/a/{nnn}.mp3', 114)).toBe(
+    'https://host/a/114.mp3',
+  );
+});
+
+it('plays al-Shuraim and al-Dosari from their three-digit files', () => {
+  // Quran.com names these two reciters' files 001.mp3 to 114.mp3. Built as
+  // 1.mp3, every surah before 100 was missing (and al-Fatiha's sample).
+  for (const id of ['shuraim', 'dosari'])
+    expect(surahAudioUrl(load(id), 68)).toMatch(/\/068\.mp3$/);
+  expect(surahAudioUrl(load('husary'), 68)).toMatch(/\/68\.mp3$/);
 });
 
 it('lists the reciters from the most deliberate to the swiftest', () => {

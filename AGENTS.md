@@ -161,6 +161,12 @@ Built once by scripts, committed, never fetched from an API at run time.
   (summed into a duration), «استمع» (one page played), and a seated
   reciter's turn (all its pages played in a row, `recitationOf()`). All
   playback goes through `src/halaqa/player.ts`; see `src/halaqa/AGENTS.md`.
+  - Each timings file keeps one address for all 114 surah files, with the
+    surah as a placeholder (`src/data/audio.ts`). Quran.com names most
+    reciters' files by the bare number (`68.mp3`) and some by three digits
+    (`068.mp3`: al-Shuraim, al-Dosari), so the placeholder is `{n}` or
+    `{nnn}`. Never guess an address: copy what the API gives, which may
+    look odd (al-Dosari's has a double slash, and the host serves it).
 - **Page fonts** are fetched at run time from `static.qurancdn.com`, which
   answers with `access-control-allow-origin: *` and a year-long cache. They
   are not in the repository. See `src/mushaf/fonts.ts`.
