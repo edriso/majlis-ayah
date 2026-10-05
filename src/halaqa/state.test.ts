@@ -18,20 +18,23 @@ import {
 } from './state';
 import { readerOf, round } from './schedule';
 
-const run = (config: Partial<Config>, ...actions: Action[]) =>
-  actions.reduce(
-    reduce,
-    reduce(initialState, {
-      type: 'start',
-      config: { ...defaultConfig, ...config },
-    }),
-  );
-
 const person = (id: string, name = ''): Member => ({
   id,
   kind: 'person',
   name,
 });
+
+/** The brief's example circle: three readers, unless a case says otherwise. */
+const threeReaders = [person('p1'), person('p2'), person('p3')];
+
+const run = (config: Partial<Config>, ...actions: Action[]) =>
+  actions.reduce(
+    reduce,
+    reduce(initialState, {
+      type: 'start',
+      config: { ...defaultConfig, members: threeReaders, ...config },
+    }),
+  );
 
 const where = (s: State) => {
   const session = s.session!;
@@ -420,5 +423,16 @@ describe('a saved halaqa', () => {
 
   it('starts fresh from nothing', () => {
     expect(sanitizeState(null)).toEqual(initialState);
+    expect(initialState.config.members).toEqual([person('p1')]);
+  });
+
+  it('keeps the circle set up on the start screen, before it starts', () => {
+    const members = [person('p1'), person('p2', 'عمر')];
+    const s = reduce(initialState, {
+      type: 'draft',
+      config: { ...defaultConfig, members, pagesPerTurn: 2 },
+    });
+    expect(s.config).toMatchObject({ members, pagesPerTurn: 2 });
+    expect(s.session).toBeNull();
   });
 });

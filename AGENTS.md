@@ -21,6 +21,9 @@ There are two screens and no router:
   who sits in the circle and in what order, people and reciters, each moved
   up or down with a button; continue or repeat; pages per turn; manual or
   reciter-timed turns. A halaqa left open is offered first, as one card.
+  On a first visit the circle is «أنت» alone; whatever is chosen here is
+  saved as it is chosen (the `draft` action), so the next visit finds the
+  circle as it was left, started or not.
 - **The reading screen** (`ReadingScreen`). The Mushaf page, fitted whole to
   the screen, or the circle (which is also the reading order: every seat
   says what it does next), one button in the top bar switching between

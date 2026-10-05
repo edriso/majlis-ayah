@@ -163,6 +163,10 @@ turn cut short at page 604 by what is left.
 
 ## Saved state
 
+`config` is the circle as last set up. The start screen saves every choice
+as it is made (`draft`), not only on «ابدأ الحلقة», so a refresh or the next
+visit finds it as it was left. With nothing saved it is «أنت» alone.
+
 `sanitizeState()` is the only way stored data comes back in. It repairs
 rather than rejects: an unknown theme becomes green, a page out of range
 becomes 1, an anchor after the turn becomes turn 0, a duplicate or malformed

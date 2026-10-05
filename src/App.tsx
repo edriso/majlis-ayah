@@ -69,6 +69,7 @@ export function App() {
           saved={state.session}
           prefs={state.prefs}
           onPrefs={setPrefs}
+          onConfig={(config) => dispatch({ type: 'draft', config })}
           onStart={(config) => open(() => dispatch({ type: 'start', config }))}
           onResume={() => open(() => {})}
         />

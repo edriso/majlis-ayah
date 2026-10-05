@@ -86,17 +86,16 @@ export type Session = {
 
 export type State = {
   prefs: Prefs;
-  /** The last configuration used, so a new halaqa starts from it. */
+  /** The circle as last set up, saved as it is chosen on the start screen,
+      so the next halaqa starts from it. */
   config: Config;
   session: Session | null;
 };
 
+/** A first visit seats only «أنت»: someone reading alone starts at once,
+    and a group adds its readers, which are then kept for the next time. */
 export const defaultConfig: Config = {
-  members: [
-    { id: 'p1', kind: 'person', name: '' },
-    { id: 'p2', kind: 'person', name: '' },
-    { id: 'p3', kind: 'person', name: '' },
-  ],
+  members: [{ id: 'p1', kind: 'person', name: '' }],
   mode: 'continue',
   pagesPerTurn: 1,
   turnChange: 'manual',
@@ -179,6 +178,7 @@ export const currentPage = (s: Session) => {
 export const isComplete = (s: Session) => currentPages(s).length === 0;
 
 export type Action =
+  | { type: 'draft'; config: Config }
   | { type: 'start'; config: Config }
   | { type: 'end' }
   | { type: 'finishTurn' }
@@ -214,6 +214,11 @@ function jump(s: Session, page: number, pageInTurn = 0): Session {
 export function reduce(state: State, action: Action): State {
   if (action.type === 'prefs')
     return { ...state, prefs: { ...state.prefs, ...action.prefs } };
+
+  // The start screen's choices, kept as they are made, so a refresh or the
+  // next visit finds the circle as it was left.
+  if (action.type === 'draft')
+    return { ...state, config: sanitizeConfig(action.config) };
 
   if (action.type === 'start') {
     const config = sanitizeConfig(action.config);

@@ -1,11 +1,24 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from './App';
 
+const addReader = (user: ReturnType<typeof userEvent.setup>) =>
+  user.click(screen.getByRole('button', { name: /أضف قارئًا/ }));
+
+/** A halaqa of three readers, «أنت» and the two added after. */
 const start = async () => {
   const user = userEvent.setup();
   render(<App />);
+  await addReader(user);
+  await addReader(user);
   await user.click(screen.getByRole('button', { name: /ابدأ الحلقة/ }));
   return user;
 };
@@ -37,18 +50,49 @@ describe('the start screen', () => {
     expect(screen.getByText('الصفحة ٢٤')).toBeTruthy();
   });
 
-  it('hides the reading mode for a single reader', async () => {
+  it('seats only «أنت» at first, and hides the reading mode for one', async () => {
     const user = userEvent.setup();
     render(<App />);
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    expect(
+      screen.getByRole('textbox', { name: 'اسم القارئ في المقعد ١' }),
+    ).toHaveProperty('placeholder', 'أنت');
+    expect(screen.queryByRole('group', { name: 'طريقة القراءة' })).toBeNull();
+    await addReader(user);
     expect(screen.getByRole('group', { name: 'طريقة القراءة' })).toBeTruthy();
-    await user.click(
-      screen.getByRole('button', { name: 'إخراج من الحلقة: القارئ الثالث' }),
-    );
     await user.click(
       screen.getByRole('button', { name: 'إخراج من الحلقة: القارئ الثاني' }),
     );
     expect(screen.queryByRole('group', { name: 'طريقة القراءة' })).toBeNull();
-    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+  });
+
+  it('keeps the circle as it was set up for the next visit', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await addReader(user);
+    await user.type(
+      screen.getByRole('textbox', { name: 'اسم القارئ في المقعد ٢' }),
+      'عمر',
+    );
+    await user.click(screen.getByRole('button', { name: /أضف شيخًا/ }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: /^محمد صديق المنشاوي/,
+      }),
+    );
+    // Closed before «ابدأ الحلقة» was ever pressed.
+    cleanup();
+    render(<App />);
+    const seats = screen.getAllByRole('listitem');
+    expect(seats).toHaveLength(3);
+    expect(
+      (
+        screen.getByRole('textbox', {
+          name: 'اسم القارئ في المقعد ٢',
+        }) as HTMLInputElement
+      ).value,
+    ).toBe('عمر');
+    expect(seats[2].textContent).toContain('الشيخ المنشاوي');
   });
 
   it('seats a sheikh, and puts him first', async () => {
@@ -71,13 +115,14 @@ describe('the start screen', () => {
     const seats = () =>
       screen.getAllByRole('listitem').map((li) => li.textContent);
     expect(seats().at(-1)).toContain('الشيخ المنشاوي');
-    for (let i = 0; i < 3; i++)
-      await user.click(screen.getByRole('button', { name: 'تقديم: المنشاوي' }));
+    await user.click(screen.getByRole('button', { name: 'تقديم: المنشاوي' }));
     expect(seats()[0]).toContain('الشيخ المنشاوي');
     expect(screen.getByRole('status').textContent).toContain(
-      'المنشاوي: المقعد ١ من ٤',
+      'المنشاوي: المقعد ١ من ٢',
     );
     // A full circle takes no one else.
+    await addReader(user);
+    await addReader(user);
     expect(
       screen
         .getByRole('button', { name: /أضف قارئًا/ })
@@ -128,6 +173,7 @@ describe('the start screen', () => {
   it('names a reader by what was typed, and keeps the default otherwise', async () => {
     const user = userEvent.setup();
     render(<App />);
+    await addReader(user);
     await user.type(
       screen.getByRole('textbox', { name: 'اسم القارئ في المقعد ٢' }),
       'عمر',
@@ -177,8 +223,7 @@ describe('a halaqa', () => {
     await user.click(
       screen.getByRole('button', { name: /تمّ — القارئ التالي/ }),
     );
-    const { unmount } = { unmount: () => document.body.replaceChildren() };
-    unmount();
+    cleanup();
     render(<App />);
     const card = screen.getByRole('region', { name: 'تابع حلقتك' });
     expect(within(card).getByText(/الصفحة ٢ · سورة البقرة/)).toBeTruthy();

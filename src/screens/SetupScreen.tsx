@@ -33,6 +33,7 @@ export function SetupScreen({
   saved,
   prefs,
   onPrefs,
+  onConfig,
   onStart,
   onResume,
 }: {
@@ -40,6 +41,7 @@ export function SetupScreen({
   saved: Session | null;
   prefs: Prefs;
   onPrefs: (prefs: Partial<Prefs>) => void;
+  onConfig: (config: Config) => void;
   onStart: (config: Config) => void;
   onResume: () => void;
 }) {
@@ -47,6 +49,10 @@ export function SetupScreen({
   const [showForm, setShowForm] = useState(!saved);
   const [picking, setPicking] = useState<ReciterRequest | null>(null);
   const [looking, setLooking] = useState(false);
+  const change = (next: Config) => {
+    setConfig(next);
+    onConfig(next);
+  };
 
   return (
     <main className="setup" id="main">
@@ -102,11 +108,11 @@ export function SetupScreen({
         >
           <StartPicker
             page={config.startPage}
-            onChange={(startPage) => setConfig({ ...config, startPage })}
+            onChange={(startPage) => change({ ...config, startPage })}
           />
           <HalaqaForm
             config={config}
-            onChange={setConfig}
+            onChange={change}
             onPickReciter={setPicking}
           />
           <button
